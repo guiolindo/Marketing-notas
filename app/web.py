@@ -44,5 +44,5 @@ def render(request: Request, name: str, status: int = 200, **ctx):
     admin, viewer = session_roles(request, settings)
     flash = request.session.pop("flash", None) if request.session else None
     ctx.update(request=request, is_admin=admin, is_viewer=viewer, csrf=lambda: csrf_token(request), flash=flash,
-               asset_v=ASSET_V, build_url=build_url, gate=bool(settings.viewer_password))
+               asset_v=ASSET_V, build_url=build_url, banner=request.app.state.banner.get(), gate=bool(settings.viewer_password))
     return templates.TemplateResponse(request, name, ctx, status_code=status)

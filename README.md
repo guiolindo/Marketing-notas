@@ -17,6 +17,11 @@ O visual (tokens, tipografia, componentes, tela de acesso) vem do repositório `
 4. **Baixar tudo em PDF** (botão no topo) junta os PDFs em um só, em ordem de emissão, com um marcador por nota.
    O botão respeita os filtros ativos: filtrou um fornecedor, baixa só as notas dele. Há também exportação CSV.
 
+**Aviso no topo do site**: em `/admin` → "Aviso no topo do site" o administrador escolhe uma mensagem pronta
+("Estamos procurando as notas e colocando para download", "Todas as notas estão disponíveis", "Novas notas estão sendo
+adicionadas"), escreve a sua (até 200 caracteres, com cor azul/laranja/verde) ou desliga. O aviso aparece para todos os
+visitantes, fica salvo no banco (sobrevive a deploys) e muda em até 15 segundos.
+
 Layouts aceitos: **DANFSe nacional** (NFS-e) e **DANFE de NF-e modelo 55**. PDF escaneado (imagem), NFC-e e
 outros layouts são recusados com a mensagem do motivo, em vez de gravar um valor errado.
 

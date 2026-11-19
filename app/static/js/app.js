@@ -35,6 +35,10 @@
     btn.addEventListener("click", function () { set(form.classList.contains("f-closed")); });
   });
 
+  // Aviso do site: digitar a mensagem própria já marca essa opção
+  var txt = document.getElementById("texto");
+  if (txt) txt.addEventListener("input", function () { var r = document.querySelector("input[name=preset][value=custom]"); if (r) r.checked = true; });
+
   // Mensagens de sucesso somem sozinhas
   document.querySelectorAll("[data-flash].ok").forEach(function (el) {
     setTimeout(function () { el.style.transition = "opacity .4s"; el.style.opacity = "0"; }, 5000);

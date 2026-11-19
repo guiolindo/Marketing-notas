@@ -127,6 +127,22 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .filter-grid .field { grid-column: span 2; } .filter-grid .f-q { grid-column: span 4; } .filter-grid .f-btn { grid-column: span 2; display: flex; gap: 8px; } .filter-grid .f-btn .btn { flex: 1; }
 input[type=search]::-webkit-search-cancel-button { cursor: pointer; }
 
+/* aviso no topo do site */
+.site-banner { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 10px; border: 1px solid; margin-bottom: 18px; font-size: 16px; font-weight: 700; line-height: 1.35; box-shadow: 0 2px 10px -6px rgba(16,36,63,.25); }
+.site-banner.ok { background: var(--ok-soft); border-color: var(--ok-line); color: var(--ok-ink); } .site-banner.warn { background: var(--warn-soft); border-color: var(--warn-line); color: var(--warn-ink); } .site-banner.info { background: var(--accent-soft); border-color: var(--info-line); color: var(--info-ink); }
+.sb-ico { display: inline-flex; flex-shrink: 0; } .sb-txt { min-width: 0; overflow-wrap: anywhere; }
+.sb-dots { display: inline-flex; gap: 4px; align-items: center; height: 22px; } .sb-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--orange-dark); animation: sb-bounce 1.2s ease-in-out infinite; }
+.sb-dots i:nth-child(2) { animation-delay: .15s; } .sb-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes sb-bounce { 0%, 80%, 100% { transform: scale(.55); opacity: .5; } 40% { transform: scale(1.15); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sb-dots i { animation: none; } }
+.banner-card summary { cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .banner-card summary .ico { color: var(--accent); }
+.banner-form { margin-top: 14px; } .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.opt { margin: 0; cursor: pointer; display: block; } .opt input { position: absolute; opacity: 0; pointer-events: none; }
+.opt-box { display: flex; flex-direction: column; gap: 3px; height: 100%; padding: 11px 13px; border: 2px solid var(--line); border-radius: 10px; background: #fff; transition: border-color .14s, box-shadow .14s, background .14s; font-weight: 400; }
+.opt-box strong { font-size: 13.5px; } .opt-box span { color: var(--muted); font-size: 12.5px; }
+.opt-box.ok { border-left: 5px solid var(--ok); } .opt-box.warn { border-left: 5px solid var(--orange); } .opt-box.info { border-left: 5px solid var(--accent); } .opt-box.off { border-left: 5px solid var(--line-strong); }
+.opt:hover .opt-box { border-color: var(--line-strong); } .opt input:checked + .opt-box { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px rgba(27,79,138,.14); } .opt input:focus-visible + .opt-box { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row-custom { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 12px; }
 /* envio */
 .upload-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; align-items: stretch; }
 .drop { border: 2px dashed var(--line-strong); border-radius: 10px; background: var(--surface-2); padding: 28px 18px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; font-weight: 400; transition: border-color .18s, background .18s, transform .18s, box-shadow .18s; }
@@ -242,6 +258,7 @@ tfoot td { font-weight: 700; background: var(--surface-2); border-bottom: 0; } t
   .res { grid-template-columns: minmax(0, 1fr); gap: 2px; } .fname, .rmsg { white-space: normal; overflow-wrap: anywhere; }
   .facts { grid-template-columns: minmax(0, 1fr); gap: 0; } .facts dd { margin-bottom: 8px; overflow-wrap: anywhere; }
   .cols-2 { grid-template-columns: minmax(0, 1fr); }
+  .site-banner { padding: 12px 14px; font-size: 15px; } .row-custom { grid-template-columns: minmax(0, 1fr); } .opts { grid-template-columns: minmax(0, 1fr); }
 
   /* cada nota vira um cartão empilhado (sem rolagem lateral) */
   .tablewrap { overflow-x: visible; }

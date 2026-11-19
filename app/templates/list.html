@@ -2,6 +2,13 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Lançar notas' if is_admin and base == '/admin' else 'Notas fiscais' }} · Notas do Marketing de Porto Seguro{% endblock %}
 {% block content %}
+{% if banner %}
+<div class="site-banner {{ banner.kind }}" role="status">
+  <span class="sb-ico">{% if banner.kind == 'ok' %}{{ ico('check', 22) }}{% elif banner.kind == 'warn' %}<span class="sb-dots" aria-hidden="true"><i></i><i></i><i></i></span>{% else %}{{ ico('megaphone', 22) }}{% endif %}</span>
+  <span class="sb-txt">{{ banner.text }}</span>
+</div>
+{% endif %}
+
 <div class="page-head">
   <div>
     <div class="crumbs">{{ 'Administração' if base == '/admin' else 'Painel' }}</div>
@@ -15,6 +22,28 @@
 </div>
 
 {% if base == '/admin' %}
+<details class="card banner-card" {{ 'open' if not banner }}>
+  <summary>{{ ico('megaphone', 18) }}Aviso no topo do site <span class="muted small">{% if banner %}— mostrando: “{{ banner.text }}”{% else %}— desligado{% endif %}</span></summary>
+  <form method="post" action="/admin/aviso" class="banner-form">
+    <input type="hidden" name="csrf" value="{{ csrf() }}">
+    <div class="opts">
+      {% for key, p in presets.items() %}
+      <label class="opt"><input type="radio" name="preset" value="{{ key }}" {{ 'checked' if banner and banner.preset == key }}><span class="opt-box {{ p[1] }}"><strong>{{ p[0] }}</strong><span>{{ p[2] }}</span></span></label>
+      {% endfor %}
+      <label class="opt"><input type="radio" name="preset" value="custom" {{ 'checked' if banner and banner.preset == 'custom' }}><span class="opt-box info"><strong>Mensagem própria</strong><span>Escreva o que quiser (até {{ max_banner }} caracteres).</span></span></label>
+      <label class="opt"><input type="radio" name="preset" value="off" {{ 'checked' if not banner }}><span class="opt-box off"><strong>Sem aviso</strong><span>Esconde o aviso do site.</span></span></label>
+    </div>
+    <div class="row-custom">
+      <div class="field"><label for="texto">Mensagem própria</label><input id="texto" name="texto" type="text" maxlength="{{ max_banner }}" value="{{ banner.text if banner and banner.preset == 'custom' }}" placeholder="Ex.: Notas de junho a caminho"></div>
+      <div class="field"><label for="tipo">Cor</label><select id="tipo" name="tipo">
+        <option value="info" {{ 'selected' if not banner or banner.kind == 'info' }}>Azul (informação)</option>
+        <option value="warn" {{ 'selected' if banner and banner.kind == 'warn' }}>Laranja (em andamento)</option>
+        <option value="ok" {{ 'selected' if banner and banner.kind == 'ok' }}>Verde (tudo certo)</option></select></div>
+    </div>
+    <button class="btn primary" type="submit">Salvar aviso</button>
+  </form>
+</details>
+
 <section class="card upload-card" aria-labelledby="up-h">
   <form method="post" action="/admin/enviar" enctype="multipart/form-data" data-upload>
     <input type="hidden" name="csrf" value="{{ csrf() }}">

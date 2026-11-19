@@ -6,7 +6,12 @@ import time
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import (
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -35,6 +40,7 @@ from app.services.notes import (
     ingest,
     query_notes,
 )
+from app.services.site import MAX_TEXT, PRESETS, build_banner
 from app.web import render
 
 router = APIRouter()
@@ -89,7 +95,7 @@ def list_view(request: Request, db: Session, admin: bool, results=None):
     base = "/admin" if admin else "/"
     return render(request, "list.html", f=f, stats=stats, notes=notes, page=page, pages=pages, base=base,
                   fornecedores=fornecedores, categorias=categorias, results=results, per_page=PER_PAGE,
-                  max_mb=request.app.state.settings.max_upload_mb,
+                  presets=PRESETS, max_banner=MAX_TEXT, max_mb=request.app.state.settings.max_upload_mb,
                   max_files=request.app.state.settings.max_files_per_upload,
                   recent=db.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(12)).all() if admin else [])
 
@@ -304,4 +310,19 @@ def admin_delete(note_id: int, request: Request, csrf: str = Form(""), db: Sessi
     db.commit()
     audit(db, request, request.app.state.settings, "excluiu", label)
     _flash(request, "ok", f"{label} excluída.")
+    return RedirectResponse("/admin", status_code=303)
+
+
+@router.post("/admin/aviso")
+def admin_banner(request: Request, preset: str = Form("", max_length=20), texto: str = Form("", max_length=1000),
+                 tipo: str = Form("info", max_length=10), csrf: str = Form(""), db: Session = Depends(get_db),
+                 _=Depends(require_admin)):
+    _post_guard(request, csrf)
+    banner, error = build_banner(preset, texto, tipo)
+    if error:
+        _flash(request, "error", error)
+        return RedirectResponse("/admin", status_code=303)
+    request.app.state.banner.set(banner)
+    audit(db, request, request.app.state.settings, "aviso", banner.text[:80] if banner else "desligado")
+    _flash(request, "ok", "Aviso do site atualizado." if banner else "Aviso do site desligado.")
     return RedirectResponse("/admin", status_code=303)

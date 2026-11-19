@@ -25,6 +25,7 @@ from app.security import (
     apply_security_headers,
 )
 from app.services.merge import MergeCache
+from app.services.site import BannerStore
 from app.web import BASE, render
 
 log = logging.getLogger("notas")
@@ -39,6 +40,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.SessionLocal = init_db(engine)
+    app.state.banner = BannerStore(app.state.SessionLocal)
     app.state.vault = Vault(settings.document_encryption_key)
     app.state.merge_cache = MergeCache(settings.merge_cache_mb * 1024 * 1024)
     app.state.merge_slots = threading.BoundedSemaphore(settings.merge_concurrency)

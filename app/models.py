@@ -85,3 +85,12 @@ class AuditLog(Base):
     event: Mapped[str] = mapped_column(String(40))
     detail: Mapped[str] = mapped_column(String(400), default="")
     ip: Mapped[str] = mapped_column(String(64), default="")
+
+
+class SiteSetting(Base):
+    """Configurações editáveis pelo administrador (hoje: o aviso no topo do site)."""
+
+    __tablename__ = "site_settings"
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")
