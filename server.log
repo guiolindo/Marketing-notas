@@ -1,0 +1,18 @@
+INFO:     Started server process [681]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:39718 - "GET /admin/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39718 - "GET /static/css/app.css?v=587fd38792 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39730 - "GET /static/js/app.js?v=587fd38792 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39746 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39730 - "GET /static/fonts/bricolage-grotesque-latin-wght-normal.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39746 - "GET /static/fonts/inter-latin-wght-normal.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39746 - "POST /admin/login HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:39746 - "GET /admin HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39746 - "POST /admin/enviar HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39746 - "GET / HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [681]

@@ -66,6 +66,7 @@ h2 { font-size: 15px; margin: 0 0 10px; font-weight: 700; }
 /* filhos de grid podem encolher abaixo do conteúdo (evita rolagem horizontal no celular) */
 .grid > * { min-width: 0; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(16,36,63,.04); }
+.card { min-width: 0; max-width: 100%; }
 .card.flush { padding: 0; overflow: hidden; } .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; } .card-head h2 { margin: 0; }
 .grid { display: grid; gap: 16px; margin-bottom: 16px; } .grid > .card { margin-bottom: 0; }
 .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .cols-main { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
@@ -88,9 +89,10 @@ h2 { font-size: 15px; margin: 0 0 10px; font-weight: 700; }
 .mchart { width: 100%; height: auto; max-height: 200px; display: block; }
 .mchart .base { stroke: var(--line-strong); stroke-width: 1; } .mchart .mbar { fill: #9db9d8; transition: fill .15s; } .mchart .mbar.cur { fill: var(--accent); } .mchart .mbar:hover { fill: var(--orange); }
 .mchart .mlab { font-size: 10px; fill: var(--muted); letter-spacing: .02em; }
-.hbars { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+.hbars { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 11px; }  /* minmax(0,…): sem isso um nome longo alarga a coluna e vaza do cartão */
+.hbars li { min-width: 0; }
 .hbars a { display: block; color: inherit; border-radius: 6px; padding: 3px 6px; margin: -3px -6px; transition: background .12s; } .hbars a:hover { background: var(--surface-2); text-decoration: none; }
-.hb-top { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; } .hb-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; } .hb-val { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hb-top { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; min-width: 0; } .hb-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; } .hb-val { font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
 .hb-bar { display: block; width: 100%; height: 6px; margin: 4px 0 2px; } .hb-bg { fill: var(--surface-3); } .hb-fg { fill: var(--orange); } .hb-sub { font-size: 11.5px; color: var(--muted); }
 
 /* formulários */
@@ -180,5 +182,25 @@ tfoot td { font-weight: 700; background: var(--surface-2); border-bottom: 0; } t
   .res { grid-template-columns: 1fr; gap: 2px; } .facts { grid-template-columns: 1fr; gap: 0; } .facts dd { margin-bottom: 8px; }
   th, td { padding: 9px 10px; }
   .mchart .mlab { font-size: 16px; }
+}
+/* celular: cada nota vira um cartão (a tabela larga escondia o valor atrás de rolagem lateral) */
+@media (max-width: 640px) {
+  table.notes, table.notes tbody, table.notes tfoot { display: block; }
+  table.notes thead { display: none; }
+  table.notes tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  table.notes tbody td { display: block; border: 0; padding: 2px 0; min-width: 0; white-space: normal; background: none !important; }
+  table.notes td:nth-child(1) { grid-column: 1; grid-row: 1; font-weight: 600; }
+  table.notes td.act { grid-column: 2; grid-row: 1; padding: 0; white-space: nowrap; }
+  table.notes td:nth-child(1) .muted { font-weight: 400; }
+  table.notes td:nth-child(2) { grid-column: 1; grid-row: 2; }
+  table.notes td:nth-child(3) { grid-column: 2; grid-row: 2; text-align: right; align-self: center; color: var(--muted); }
+  table.notes td:nth-child(3)::before { content: "nº "; }
+  table.notes td:nth-child(4) { grid-column: 1 / -1; grid-row: 3; padding-top: 6px; overflow-wrap: anywhere; }
+  table.notes td.desc { grid-column: 1 / -1; grid-row: 4; max-width: none; min-width: 0; overflow-wrap: anywhere; }
+  table.notes td.num { grid-column: 1 / -1; grid-row: 5; text-align: right; font-size: 19px; padding-top: 6px; }
+  table.notes tfoot tr { display: flex; justify-content: space-between; gap: 10px; padding: 12px 14px; background: var(--surface-2); }
+  table.notes tfoot td { display: block; padding: 0; background: none; }
+  table.notes tfoot td:nth-child(n+3) { display: none; }
+  table.notes tfoot td[colspan] { flex: 1; }
 }
 @media print { .top, .foot, .filters, .upload-card, .head-actions, td.act, th.act { display: none !important; } body { background: #fff; } }
