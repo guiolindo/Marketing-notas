@@ -124,7 +124,7 @@ def clean(text: str, limit: int = 300) -> str:
 
 
 def clean_name(text: str) -> str:
-    """Nome de MEI sai como "NOME 01299102522" (o CPF colado no fim): o CPF não deve aparecer na tela."""
+    """Nome de MEI sai como "NOME 12345678909" (o CPF colado no fim): o CPF não deve aparecer na tela."""
     return re.sub(r"\s+\d{11}$", "", clean(text))
 
 

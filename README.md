@@ -83,7 +83,7 @@ Com `DEBUG=false` o servidor **recusa subir** se `SECRET_KEY` ou `ADMIN_PASSWORD
 > **Atenção sobre privacidade.** Os PDFs são documentos fiscais completos. Uma NFS-e de MEI, por exemplo, pode trazer
 > CPF e conta bancária em "Informações complementares", e o PDF original é exatamente o que fica disponível para
 > download. Se o link não deve ser público, defina `VIEWER_PASSWORD`. O CPF que alguns MEIs têm colado ao nome
-> (`NOME 01299102522`) é removido do nome exibido na tela, mas continua no PDF.
+> (`NOME 12345678909`) é removido do nome exibido na tela, mas continua no PDF.
 
 ## Desenvolvimento
 
