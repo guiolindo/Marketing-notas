@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import logging
 import secrets
+import threading
 import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import Settings, get_settings
@@ -19,8 +21,10 @@ from app.security import (
     Forbidden,
     NeedsAdmin,
     NeedsViewer,
+    RateLimiter,
     apply_security_headers,
 )
+from app.services.merge import MergeCache
 from app.web import BASE, render
 
 log = logging.getLogger("notas")
@@ -36,10 +40,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.SessionLocal = init_db(engine)
     app.state.vault = Vault(settings.document_encryption_key)
+    app.state.merge_cache = MergeCache(settings.merge_cache_mb * 1024 * 1024)
+    app.state.merge_slots = threading.BoundedSemaphore(settings.merge_concurrency)
+    app.state.heavy_limiter = RateLimiter(settings.merge_rate_per_minute)
     app.state.admin_auth = AdminAuth(settings.admin_username, settings.admin_password)
     if not app.state.admin_auth.enabled:
         log.warning("ADMIN_PASSWORD não definida: o login de administrador está desligado.")
 
+    app.add_middleware(GZipMiddleware, minimum_size=1024)  # HTML/CSS/JS/CSV; PDFs saem com Content-Encoding: identity
     app.add_middleware(
         SessionMiddleware, secret_key=settings.secret_key or secrets.token_hex(32),
         session_cookie="nm_session" if settings.debug else "__Host-nm_session",

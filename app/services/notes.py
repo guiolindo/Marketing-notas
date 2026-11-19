@@ -10,8 +10,6 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Mapping
 
-from pypdf import PdfReader, PdfWriter
-from pypdf.errors import PyPdfError
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -254,24 +252,3 @@ def build_csv(notes: list[Note]) -> bytes:
             n.vencimento.strftime("%d/%m/%Y") if n.vencimento else "", n.emit_nome, n.emit_doc, n.tom_nome,
             n.descricao, n.categoria, money(n.desconto_cents or 0), money(n.valor_cents), n.chave]])
     return ("﻿" + buf.getvalue()).encode("utf-8")
-
-
-def merge_pdfs(db: Session, vault: Vault, notes: list[Note]) -> bytes:
-    """Junta os PDFs numa ordem cronológica, com um marcador (índice do leitor de PDF) por nota."""
-    writer = PdfWriter()
-    for n in sorted(notes, key=lambda n: (n.data_emissao, n.emit_nome.lower(), n.numero.zfill(12))):
-        raw = vault.open(db.scalar(select(Note.pdf_data).where(Note.id == n.id)), n.encrypted)
-        try:
-            reader = PdfReader(io.BytesIO(raw), strict=False)
-            first = len(writer.pages)
-            for page in reader.pages:
-                if "/Annots" in page:  # links/ações do PDF original não vão para o arquivo final
-                    del page["/Annots"]
-                writer.add_page(page)
-        except (PyPdfError, ValueError, KeyError, TypeError, AttributeError):
-            continue
-        writer.add_outline_item(title=f"{n.label} · {n.emit_nome[:40]} · {brl(n.valor_cents)}", page_number=first)
-    writer.add_metadata({"/Title": "Notas fiscais", "/Producer": "Notas de Marketing"})
-    out = io.BytesIO()
-    writer.write(out)
-    return out.getvalue()

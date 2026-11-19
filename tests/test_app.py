@@ -6,7 +6,14 @@ from pypdf import PdfReader
 
 from app.config import Settings
 from app.main import create_app
-from tests.conftest import PASSWORD, _reset_external_db, csrf_from, login, make_settings, upload
+from tests.conftest import (
+    PASSWORD,
+    _reset_external_db,
+    csrf_from,
+    login,
+    make_settings,
+    upload,
+)
 from tests.helpers import danfe_pdf, nfse_pdf
 
 # ---------------------------------------------------------------- acesso e segurança

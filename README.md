@@ -59,10 +59,32 @@ As tabelas são criadas na primeira subida. O disco do Railway não persiste ent
 | `VIEWER_PASSWORD` | não | exige senha também para **ver** as notas |
 | `DOCUMENT_ENCRYPTION_KEY` | não | criptografa os PDFs no banco (Fernet). Perdeu a chave, perdeu os PDFs |
 | `MAX_UPLOAD_MB` / `MAX_FILES_PER_UPLOAD` | não | 10 MB / 20 arquivos |
+| `MAX_MERGED_PAGES` | não | teto de páginas do PDF único (2500) |
+| `MERGE_CONCURRENCY` | não | PDFs únicos gerados ao mesmo tempo (2) |
+| `MERGE_RATE_PER_MINUTE` | não | downloads pesados (PDF único/CSV) por IP por minuto (6) |
+| `MERGE_CACHE_MB` | não | cache em memória dos PDFs únicos já gerados (64; 0 desliga) |
 | `TRUSTED_PROXY_COUNT` | não | proxies na frente do app (Railway = 1) |
 | `DEBUG` | não | `true` só em desenvolvimento |
 
 Com `DEBUG=false` o servidor **recusa subir** se `SECRET_KEY` ou `ADMIN_PASSWORD` estiverem ausentes ou fracas.
+
+## Desempenho e proteção contra falhas
+
+Técnicas adaptadas do `notas-despesas` (teto de páginas, falha explícita, limites nas rotas caras):
+
+- **Cache do PDF único**: a chave é o conjunto de notas (id + hash do arquivo) em ordem. Pedir o mesmo pacote de novo
+  não relê o banco nem junta nada. Entrou, saiu ou foi trocado um PDF: chave nova. Editar categoria não invalida.
+- **Teto de páginas** (`MAX_MERGED_PAGES`): acima dele o download é recusado (413) com orientação para filtrar,
+  em vez de entregar um pacote cortado em silêncio.
+- **Falha explícita**: se algum PDF guardado não puder ser juntado, o download falha dizendo qual nota. Pacote incompleto
+  de nota fiscal passaria por completo.
+- **Rotas caras protegidas**: PDF único e CSV são públicos, então têm limite por IP (429) e no máximo
+  `MERGE_CONCURRENCY` gerações simultâneas (503 + nova tentativa), para ninguém esgotar a memória do servidor.
+- **PDF menor quando possível**: fontes e imagens idênticas repetidas entre notas são unificadas. Se a otimização
+  falhar, o PDF sai sem ela.
+- **HTTP**: gzip para HTML/CSS/JS/CSV (PDFs não, já são comprimidos); CSS/JS com versão por **hash do conteúdo** e
+  cache de 1 ano (`immutable`); fontes imutáveis.
+- **Banco**: o PDF fica numa coluna carregada sob demanda; listar, filtrar e somar nunca lê os arquivos.
 
 ## Segurança
 

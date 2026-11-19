@@ -1,6 +1,7 @@
 """Templates, filtros de formatação e utilitários de resposta."""
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -18,10 +19,13 @@ templates.env.filters["doc"] = lambda s: s or "—"
 
 
 def _asset_version() -> str:
-    try:
-        return str(int(max(p.stat().st_mtime for p in (BASE / "static").rglob("*") if p.is_file())))
-    except ValueError:
-        return "1"
+    """Versão = hash do CONTEÚDO dos arquivos estáticos (mtime muda a cada deploy mesmo sem mudança real)."""
+    h = hashlib.sha1()
+    for p in sorted((BASE / "static").rglob("*")):
+        if p.is_file() and p.suffix in (".css", ".js", ".svg"):
+            h.update(p.name.encode())
+            h.update(p.read_bytes())
+    return h.hexdigest()[:10]
 
 
 ASSET_V = _asset_version()

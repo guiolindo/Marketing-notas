@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     max_upload_mb: int = Field(10, ge=1, le=50)
     max_files_per_upload: int = Field(20, ge=1, le=100)
     max_merge_notes: int = Field(1000, ge=1)
+    max_merged_pages: int = Field(2500, ge=1)  # teto de páginas do PDF único (memória do worker)
+    merge_concurrency: int = Field(2, ge=1, le=8)  # PDFs únicos sendo gerados ao mesmo tempo
+    merge_rate_per_minute: int = Field(6, ge=1)  # downloads pesados (PDF único/CSV) por IP por minuto
+    merge_cache_mb: int = Field(64, ge=0, le=512)  # cache em memória dos PDFs únicos já gerados (0 desliga)
     trusted_proxy_count: int = Field(1, ge=0, le=5)
 
     session_hours: int = Field(8, ge=1, le=72)

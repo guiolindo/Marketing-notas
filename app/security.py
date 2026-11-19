@@ -4,7 +4,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import threading
 import time
+from collections import defaultdict, deque
 from datetime import timedelta
 from urllib.parse import urlsplit
 
@@ -90,6 +92,29 @@ def audit(db: Session, request: Request, settings: Settings, event: str, detail:
     db.commit()
 
 
+class RateLimiter:
+    """Janela deslizante em memória (o app roda com 1 worker). Protege as rotas caras, que são públicas."""
+
+    def __init__(self, per_minute: int):
+        self.per_minute = per_minute
+        self._hits: dict[str, deque] = defaultdict(deque)
+        self._lock = threading.Lock()
+
+    def allow(self, key: str) -> bool:
+        now = time.monotonic()
+        with self._lock:
+            q = self._hits[key]
+            while q and now - q[0] > 60:
+                q.popleft()
+            if len(q) >= self.per_minute:
+                return False
+            q.append(now)
+            if len(self._hits) > 5000:  # não deixa o dicionário crescer sem limite
+                for k in [k for k, v in self._hits.items() if not v or now - v[-1] > 60]:
+                    self._hits.pop(k, None)
+            return True
+
+
 # ---------------------------------------------------------------- sessão
 
 def csrf_token(request: Request) -> str:
@@ -157,5 +182,10 @@ def apply_security_headers(response, request: Request, settings: Settings) -> No
     h["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     if not settings.debug:
         h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    if not request.url.path.startswith("/static/"):
+    path = request.url.path
+    if path.startswith("/static/"):
+        # arquivos versionados (?v=hash do conteúdo) e fontes nunca mudam sob a mesma URL
+        immutable = "v=" in request.url.query or path.startswith("/static/fonts/")
+        h["Cache-Control"] = "public, max-age=31536000, immutable" if immutable else "public, max-age=3600"
+    else:
         h.setdefault("Cache-Control", "private, no-store")

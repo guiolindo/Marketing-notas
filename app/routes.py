@@ -25,6 +25,7 @@ from app.security import (
     session_roles,
     verify_csrf,
 )
+from app.services.merge import MergeError, merge_key, merge_pdfs
 from app.services.notes import (
     Filters,
     brl,
@@ -32,7 +33,6 @@ from app.services.notes import (
     compute_stats,
     filter_options,
     ingest,
-    merge_pdfs,
     query_notes,
 )
 from app.web import render
@@ -141,7 +141,8 @@ def _pdf_response(db: Session, request: Request, note: Note, disposition: str) -
     name = f"{'nfse' if note.kind == 'nfse' else 'danfe'}-{note.numero}-{note.data_emissao:%Y%m%d}.pdf"
     return Response(data, media_type="application/pdf", headers={
         "Content-Disposition": f'{disposition}; filename="{name}"',
-        "Content-Security-Policy": "frame-ancestors 'none'", "Cache-Control": "private, no-store"})
+        "Content-Security-Policy": "frame-ancestors 'none'", "Cache-Control": "private, no-store",
+        "Content-Encoding": "identity"})
 
 
 @router.get("/nota/{note_id}.pdf")
@@ -154,24 +155,51 @@ def download_pdf(note_id: int, request: Request, db: Session = Depends(get_db), 
     return _pdf_response(db, request, _get_note(db, note_id), "attachment")
 
 
+def _heavy_guard(request: Request) -> None:
+    """Rotas caras e públicas: limite por IP, para uma pessoa só não esgotar o servidor."""
+    from starlette.exceptions import HTTPException
+    s = request.app.state
+    if not s.heavy_limiter.allow(client_ip(request, s.settings.trusted_proxy_count)):
+        raise HTTPException(429, "Muitos downloads em pouco tempo. Aguarde um minuto.")
+
+
 @router.get("/baixar-tudo.pdf")
 def download_all(request: Request, db: Session = Depends(get_db), _=Depends(require_viewer)):
     from starlette.exceptions import HTTPException
-    settings = request.app.state.settings
+    state = request.app.state
+    settings = state.settings
+    _heavy_guard(request)
     f = Filters.from_params(request.query_params)
-    notes = db.scalars(query_notes(f).limit(settings.max_merge_notes + 1)).all()
+    notes = list(db.scalars(query_notes(f).limit(settings.max_merge_notes + 1)).all())
     if not notes:
         raise HTTPException(404, "Nenhuma nota para baixar com esses filtros.")
     if len(notes) > settings.max_merge_notes:
         raise HTTPException(413, f"Mais de {settings.max_merge_notes} notas. Use os filtros para reduzir o período.")
-    data = merge_pdfs(db, request.app.state.vault, notes)
+    pages = sum(n.pages for n in notes)
+    if pages > settings.max_merged_pages:  # recusa em vez de entregar um pacote cortado em silêncio
+        raise HTTPException(413, f"O PDF teria {pages} páginas (máximo {settings.max_merged_pages}). Use os filtros.")
+
+    key = merge_key(notes)
+    data = state.merge_cache.get(key)
+    if data is None:
+        if not state.merge_slots.acquire(blocking=False):
+            raise HTTPException(503, "Já há PDFs sendo gerados. Tente de novo em instantes.")
+        try:
+            data = merge_pdfs(db, state.vault, notes)
+        except MergeError as exc:
+            raise HTTPException(500, str(exc)) from exc
+        finally:
+            state.merge_slots.release()
+        state.merge_cache.put(key, data)
     return Response(data, media_type="application/pdf", headers={
         "Content-Disposition": f'attachment; filename="notas-{date.today():%Y-%m-%d}.pdf"',
-        "Content-Security-Policy": "frame-ancestors 'none'", "Cache-Control": "private, no-store"})
+        "Content-Security-Policy": "frame-ancestors 'none'", "Cache-Control": "private, no-store",
+        "Content-Encoding": "identity"})  # PDF já é comprimido: evita gastar CPU com gzip
 
 
 @router.get("/exportar.csv")
 def export_csv(request: Request, db: Session = Depends(get_db), _=Depends(require_viewer)):
+    _heavy_guard(request)
     notes = db.scalars(query_notes(Filters.from_params(request.query_params)).limit(20000)).all()
     return Response(build_csv(list(notes)), media_type="text/csv; charset=utf-8", headers={
         "Content-Disposition": f'attachment; filename="notas-{date.today():%Y-%m-%d}.csv"'})
