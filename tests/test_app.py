@@ -78,6 +78,13 @@ def test_weak_config_refuses_to_start(tmp_path):
         create_app(Settings(secret_key="curta", admin_password=PASSWORD, database_url=f"sqlite:///{tmp_path}/x.db", _env_file=None))
 
 
+def test_production_refuses_to_start_without_external_database(tmp_path):
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        create_app(Settings(secret_key="k" * 48, admin_password=PASSWORD, _env_file=None))  # SQLite padrão, sem permissão
+    assert Settings(secret_key="k" * 48, admin_password=PASSWORD,
+                    database_url="postgres://u:p@h:5432/db", _env_file=None).sqlalchemy_url.startswith("postgresql+psycopg://")
+
+
 def test_viewer_password_gate(tmp_path):
     s = make_settings(tmp_path, viewer_password="entrada-1234")
     _reset_external_db(s)

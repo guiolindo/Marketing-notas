@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     debug: bool = False
     secret_key: str = ""
     database_url: str = "sqlite:///./data/notas.db"
+    allow_sqlite: bool = False  # só para testes: em produção o SQLite some a cada deploy do Railway
 
     admin_username: str = "admin"
     admin_password: str = ""
@@ -52,6 +53,9 @@ class Settings(BaseSettings):
     def validate_security(self) -> None:
         problems: list[str] = []
         if not self.debug:
+            if self.sqlalchemy_url.startswith("sqlite") and not self.allow_sqlite:
+                problems.append("DATABASE_URL ausente (sem banco externo os PDFs somem a cada deploy; "
+                                "no Railway use ${{Postgres.DATABASE_URL}})")
             if len(self.secret_key) < 32:
                 problems.append("SECRET_KEY ausente ou curta (mínimo 32 caracteres)")
             pw = self.admin_password

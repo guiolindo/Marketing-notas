@@ -23,7 +23,7 @@ def _reset_external_db(settings: Settings) -> None:
 
 def make_settings(tmp_path, **kw) -> Settings:
     base = dict(secret_key="k" * 48, admin_password=PASSWORD, database_url=os.environ.get("TEST_DATABASE_URL") or f"sqlite:///{tmp_path}/t.db",
-                max_upload_mb=2, _env_file=None)
+                max_upload_mb=2, allow_sqlite=True, _env_file=None)
     base.update(kw)
     return Settings(**base)
 

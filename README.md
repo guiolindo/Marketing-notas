@@ -52,7 +52,7 @@ As tabelas são criadas na primeira subida. O disco do Railway não persiste ent
 
 | Variável | Obrigatória | Para quê |
 |---|---|---|
-| `DATABASE_URL` | sim | PostgreSQL (`${{Postgres.DATABASE_URL}}`). Sem ela, usa SQLite local |
+| `DATABASE_URL` | sim | PostgreSQL (`${{Postgres.DATABASE_URL}}`). Sem ela o servidor **não sobe** em produção (o SQLite do contêiner some a cada deploy) |
 | `SECRET_KEY` | sim | assina a sessão (≥ 32 caracteres) |
 | `ADMIN_PASSWORD` | sim | senha do `/admin` (≥ 12 caracteres, letras + números/símbolos) |
 | `ADMIN_USERNAME` | não | padrão `admin` |
