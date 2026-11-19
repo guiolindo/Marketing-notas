@@ -100,7 +100,7 @@ def merge_pdfs(db: Session, vault: Vault, notes: list[Note]) -> bytes:
     if failed:
         raise MergeError("Não foi possível juntar: " + ", ".join(failed[:5]) + ("…" if len(failed) > 5 else "") + ".")
     _dedupe(writer)
-    writer.add_metadata({"/Title": "Notas fiscais", "/Producer": "Notas de Marketing"})
+    writer.add_metadata({"/Title": "Notas fiscais", "/Producer": "Notas do Marketing de Porto Seguro"})
     out = io.BytesIO()
     writer.write(out)
     return out.getvalue()

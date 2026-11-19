@@ -1,4 +1,4 @@
-/* Notas de Marketing — design herdado do Economart Energia (mesmos tokens, tipografia e componentes) */
+/* Notas do Marketing de Porto Seguro — design herdado do Economart Energia (mesmos tokens, tipografia e componentes) */
 @font-face { font-family: Inter; font-weight: 100 900; font-display: swap; src: url("/static/fonts/inter-latin-wght-normal.woff2") format("woff2"); }
 @font-face { font-family: "Bricolage Grotesque"; font-weight: 200 800; font-display: swap; src: url("/static/fonts/bricolage-grotesque-latin-wght-normal.woff2") format("woff2"); }
 
@@ -165,7 +165,8 @@ tfoot td { font-weight: 700; background: var(--surface-2); border-bottom: 0; } t
 .auth-glow.g1 { width: 380px; height: 380px; right: -90px; bottom: 8%; background: rgba(244,121,32,.26); animation: glow-a 22s ease-in-out infinite alternate; }
 .auth-glow.g2 { width: 320px; height: 320px; left: -80px; top: 36%; background: rgba(88,160,235,.32); animation: glow-b 26s ease-in-out infinite alternate; }
 @keyframes glow-a { to { transform: translate(-60px, -40px) scale(1.12); } } @keyframes glow-b { to { transform: translate(50px, 30px) scale(1.1); } }
-.auth-logo { align-self: flex-start; display: flex; align-items: center; gap: 12px; color: #fff; font: 700 22px/1 "Bricolage Grotesque", Inter, sans-serif; letter-spacing: -.01em; animation: auth-rise .8s both; } .auth-logo:hover { color: #fff; text-decoration: none; } .auth-logo img { border-radius: 11px; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+.auth-logo { align-self: flex-start; display: flex; align-items: center; gap: 12px; color: #fff; font: 700 22px/1 "Bricolage Grotesque", Inter, sans-serif; letter-spacing: -.01em; animation: auth-rise .8s both; } .auth-logo:hover { color: #fff; text-decoration: none; } .auth-logo span { line-height: 1.1; } .auth-logo small { font: 600 12px/1 Inter, sans-serif; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
+.auth-logo img { border-radius: 11px; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
 .auth-pitch { max-width: 460px; animation: auth-rise .8s .12s cubic-bezier(.2,.7,.2,1) both; }
 .auth-pitch h2 { font: 700 36px/1.12 "Bricolage Grotesque", Inter, sans-serif; margin: 0 0 12px; color: #fff; letter-spacing: -.02em; } .auth-pitch p { margin: 0; color: rgba(255,255,255,.82); font-size: 16px; }
 .auth-glass { width: 100%; max-width: 600px; padding: 16px 20px 10px; border-radius: 18px; background: linear-gradient(160deg, rgba(255,255,255,.12), rgba(255,255,255,.04)); border: 1px solid rgba(255,255,255,.16); box-shadow: 0 24px 50px -24px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: auth-rise .8s .3s cubic-bezier(.2,.7,.2,1) both; }
@@ -206,7 +207,7 @@ tfoot td { font-weight: 700; background: var(--surface-2); border-bottom: 0; } t
 
   /* topo compacto + abas fixas embaixo */
   .top { position: sticky; top: 0; padding-top: env(safe-area-inset-top); }
-  .top-in { padding: 8px 14px; } .top-nav { display: none; } .brand small { display: none; } .brand strong { font-size: 16px; }
+  .top-in { padding: 8px 14px; } .top-nav { display: none; } .brand strong { font-size: 16px; }
   .m-nav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: #fff; border-top: 1px solid var(--line);
     padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); box-shadow: 0 -4px 16px -8px rgba(16,36,63,.25); }
   .m-nav > * { flex: 1; min-width: 0; margin: 0; }

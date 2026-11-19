@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1b4f8a">
-  <title>{% block title %}Notas de Marketing{% endblock %}</title>
+  <title>{% block title %}Notas do Marketing de Porto Seguro{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
   <link rel="stylesheet" href="/static/css/app.css?v={{ asset_v }}">
   <script src="/static/js/app.js?v={{ asset_v }}" defer></script>
@@ -16,9 +16,9 @@
 {% block bare %}
 <header class="top no-print">
   <div class="top-in">
-    <a class="brand" href="{{ '/admin' if is_admin else '/' }}" aria-label="Notas de Marketing">
+    <a class="brand" href="{{ '/admin' if is_admin else '/' }}" aria-label="Notas do Marketing de Porto Seguro">
       <img src="/static/img/favicon.svg" width="34" height="34" alt="">
-      <span><strong>Notas de Marketing</strong><small>NFS-e e DANFE</small></span>
+      <span><strong>Notas do Marketing</strong><small>de Porto Seguro</small></span>
     </a>
     <nav class="top-nav" aria-label="Principal">
       <a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Notas</a>
@@ -45,7 +45,7 @@
   <a href="/admin">{{ ico('lock') }}<span>Admin</span></a>
   {% endif %}
 </nav>
-<footer class="foot no-print">Notas de Marketing · uso interno</footer>
+<footer class="foot no-print">Notas do Marketing de Porto Seguro · uso interno</footer>
 {% endblock %}
 </body>
 </html>

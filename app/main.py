@@ -34,7 +34,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     settings.validate_security()
 
-    app = FastAPI(title="Notas de Marketing", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="Notas do Marketing de Porto Seguro", docs_url=None, redoc_url=None, openapi_url=None)
     engine = make_engine(settings)
     app.state.settings = settings
     app.state.engine = engine
