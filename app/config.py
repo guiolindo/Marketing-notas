@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     document_encryption_key: str = ""  # opcional: criptografa os PDFs no banco (Fernet)
 
     max_upload_mb: int = Field(10, ge=1, le=50)
-    max_files_per_upload: int = Field(20, ge=1, le=100)
+    max_files_per_upload: int = Field(200, ge=1, le=500)  # por requisição; o navegador envia em lotes de 10
     max_merge_notes: int = Field(1000, ge=1)
     max_merged_pages: int = Field(2500, ge=1)  # teto de páginas do PDF único (memória do worker)
     merge_concurrency: int = Field(2, ge=1, le=8)  # PDFs únicos sendo gerados ao mesmo tempo

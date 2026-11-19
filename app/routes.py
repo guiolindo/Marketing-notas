@@ -6,7 +6,7 @@ import time
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -269,6 +269,9 @@ def admin_upload(request: Request, files: list[UploadFile] = File(...), csrf: st
     count = {s: sum(1 for r in results if r.status == s) for s in ("ok", "duplicate", "invalid")}
     audit(db, request, settings, "upload",
           f"{count['ok']} lançada(s), {count['duplicate']} duplicada(s), {count['invalid']} recusada(s)")
+    if "application/json" in request.headers.get("accept", ""):  # envio em lotes feito pelo JavaScript da página
+        return JSONResponse({"results": [{"filename": r.filename, "status": r.status, "message": r.message}
+                                         for r in results]})
     return list_view(request, db, admin=True, results=results)
 
 

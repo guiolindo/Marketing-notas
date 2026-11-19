@@ -58,7 +58,7 @@ As tabelas são criadas na primeira subida. O disco do Railway não persiste ent
 | `ADMIN_USERNAME` | não | padrão `admin` |
 | `VIEWER_PASSWORD` | não | exige senha também para **ver** as notas |
 | `DOCUMENT_ENCRYPTION_KEY` | não | criptografa os PDFs no banco (Fernet). Perdeu a chave, perdeu os PDFs |
-| `MAX_UPLOAD_MB` / `MAX_FILES_PER_UPLOAD` | não | 10 MB / 20 arquivos |
+| `MAX_UPLOAD_MB` / `MAX_FILES_PER_UPLOAD` | não | 10 MB / 200 arquivos por requisição (o navegador envia em lotes de 10, sem limite de quantidade) |
 | `MAX_MERGED_PAGES` | não | teto de páginas do PDF único (2500) |
 | `MERGE_CONCURRENCY` | não | PDFs únicos gerados ao mesmo tempo (2) |
 | `MERGE_RATE_PER_MINUTE` | não | downloads pesados (PDF único/CSV) por IP por minuto (6) |

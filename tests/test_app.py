@@ -223,3 +223,28 @@ def test_error_pages_do_not_leak(client):
     r = client.get("/nao-existe", headers={"accept": "text/html"})
     assert r.status_code == 404 and "Traceback" not in r.text
     assert client.get("/docs").status_code == 404 and client.get("/openapi.json").status_code == 404
+
+
+# ---------------------------------------------------------------- envio em lotes e HTTPS
+
+def test_json_upload_for_batched_client(admin):
+    r = admin.post("/admin/enviar", data={"csrf": admin.csrf}, headers={"accept": "application/json"},
+                   files=[("files", ("a.pdf", danfe_pdf(numero=1), "application/pdf")),
+                          ("files", ("b.pdf", b"lixo", "application/pdf"))])
+    assert r.status_code == 200
+    assert [x["status"] for x in r.json()["results"]] == ["ok", "invalid"]
+
+
+def test_many_files_in_one_request_and_default_limit(admin, settings):
+    assert settings.max_files_per_upload >= 160
+    files = [("files", (f"n{i}.pdf", danfe_pdf(numero=i), "application/pdf")) for i in range(1, 41)]
+    r = admin.post("/admin/enviar", data={"csrf": admin.csrf}, files=files, headers={"accept": "application/json"})
+    assert [x["status"] for x in r.json()["results"]].count("ok") == 40
+    assert "R$ 56.000,00" in admin.get("/").text  # 40 x 1.400,00
+
+
+def test_http_is_redirected_to_https(client):
+    r = client.get("/admin/login?x=1", headers={"x-forwarded-proto": "http"}, follow_redirects=False)
+    assert r.status_code == 308 and r.headers["location"] == "https://testserver/admin/login?x=1"
+    assert client.get("/health", headers={"x-forwarded-proto": "http"}).status_code == 200  # healthcheck do Railway
+    assert client.get("/", headers={"x-forwarded-proto": "https"}).status_code == 200

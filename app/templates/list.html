@@ -22,7 +22,7 @@
       <label class="drop" for="files" data-drop>
         <span class="drop-ico">{{ ico('upload', 38) }}</span>
         <strong id="up-h">Solte os PDFs aqui ou clique para escolher</strong>
-        <span class="muted small">NFS-e e DANFE em PDF · até {{ max_files }} por vez · {{ max_mb }} MB cada · duplicadas são barradas</span>
+        <span class="muted small">NFS-e e DANFE em PDF · quantos quiser de uma vez · {{ max_mb }} MB cada · duplicadas são barradas</span>
         <input class="sr" id="files" type="file" name="files" accept="application/pdf,.pdf" multiple required>
       </label>
       <div class="picked-box">
@@ -31,6 +31,12 @@
       </div>
     </div>
   </form>
+</section>
+
+<section class="card results" data-live hidden aria-live="polite">
+  <div class="card-head"><h2 data-live-title>Lançando…</h2><button class="btn sm" type="button" data-live-reload hidden>Atualizar lista</button></div>
+  <progress class="prog" data-live-bar value="0" max="1"></progress>
+  <ul class="reslist" data-live-list></ul>
 </section>
 
 {% if results %}

@@ -55,6 +55,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.middleware("http")
     async def guard(request: Request, call_next):
+        # Atrás do Railway o TLS termina no proxy; quem abrir por http:// é mandado para https:// (o navegador marca
+        # "não seguro" em http e o cookie de sessão, que é Secure, nem chega a ser gravado).
+        if (not settings.debug and settings.trusted_proxy_count > 0 and request.url.path != "/health"
+                and request.headers.get("x-forwarded-proto", "https").split(",")[0].strip() == "http"):
+            host = request.headers.get("host", "")
+            query = ("?" + request.url.query) if request.url.query else ""
+            return RedirectResponse(f"https://{host}{request.url.path}{query}", status_code=308)
         if request.method in ("POST", "PUT", "PATCH", "DELETE"):
             try:
                 size = int(request.headers.get("content-length", "0"))

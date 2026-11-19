@@ -118,6 +118,10 @@ input[type=search]::-webkit-search-cancel-button { cursor: pointer; }
 .reslist { list-style: none; margin: 0; padding: 0; } .res { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 2fr); gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line-soft); } .res:last-child { border-bottom: 0; }
 .fname { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rmsg { color: var(--muted); }
 
+.prog { width: 100%; height: 8px; appearance: none; -webkit-appearance: none; border: 0; border-radius: 4px; overflow: hidden; background: var(--surface-3); margin-bottom: 8px; }
+.prog::-webkit-progress-bar { background: var(--surface-3); } .prog::-webkit-progress-value { background: var(--orange); transition: width .2s; } .prog::-moz-progress-bar { background: var(--orange); }
+.results[data-live] .reslist { max-height: 340px; overflow: auto; }
+.res.fail .rmsg { color: var(--bad); }
 /* tabela */
 .tablewrap { overflow-x: auto; position: relative; }
 table { width: 100%; border-collapse: collapse; } th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
