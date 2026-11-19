@@ -33,7 +33,8 @@ def nfse_text(numero=1, total="1.300,00", cnpj="11222333000181") -> str:
     return t.replace("@CHAVE@", nfse_key(numero, cnpj)).replace("@NUM@", str(numero)).replace("@TOTAL@", total)
 
 
-def make_pdf(text: str, extra: bytes = b"", size: float = 5.0) -> bytes:
+def make_pdf(text: str, extra: bytes = b"", size: float = 5.0, catalog_extra: bytes = b"", page_extra: bytes = b"",
+             extra_objects: tuple = ()) -> bytes:
     lines = text.splitlines()
     width = max(len(line) for line in lines) * size * 0.6 + 40
     height = len(lines) * (size + 1) + 40
@@ -47,11 +48,12 @@ def make_pdf(text: str, extra: bytes = b"", size: float = 5.0) -> bytes:
             ops.append(b"BT /F1 %.1f Tf %.2f %.1f Td (%s) Tj ET" % (size, 20 + m.start() * cw, y, esc))
     stream = b"\n".join(ops)
     objs = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Catalog /Pages 2 0 R " + catalog_extra + b" >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.1f %.1f] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>" % (width, height),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.1f %.1f] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R " % (width, height) + page_extra + b" >>",
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>",
         b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream",
+        *extra_objects,
     ]
     out = bytearray(b"%PDF-1.4\n")
     offsets = []

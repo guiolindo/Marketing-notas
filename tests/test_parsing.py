@@ -55,13 +55,42 @@ def test_pdf_that_is_not_a_nota():
         parse_pdf(make_pdf("Relatório qualquer\n" * 20 + "x" * 200))
 
 
-def test_not_a_pdf_and_scripts_are_rejected():
+def test_not_a_pdf_is_rejected():
     with pytest.raises(PdfRejected):
         parse_pdf(b"MZ\x90\x00 isto nao e pdf")
-    with pytest.raises(PdfRejected, match="script"):
-        parse_pdf(danfe_pdf() + b"\n% /JavaScript (app.alert(1))")
     with pytest.raises(PdfRejected):
         parse_pdf(b"%PDF-1.4\n garbage")
+
+
+@pytest.mark.parametrize("kw", [
+    {"catalog_extra": b"/OpenAction << /S /JavaScript /JS (app.alert(1)) >>"},
+    {"catalog_extra": b"/AA << /WC << /S /JavaScript /JS (x) >> >>"},
+    {"catalog_extra": b"/Names << /JavaScript 6 0 R >>", "extra_objects": (b"<< /Names [] >>",)},
+    {"page_extra": b"/Annots [ << /Type /Annot /Subtype /Link /Rect [0 0 9 9] /A << /S /Launch /F (cmd.exe) >> >> ]"},
+    {"page_extra": b"/AA << /O << /S /JavaScript /JS (x) >> >>"},
+    {"extra_objects": (b"<< /Type /EmbeddedFile /Length 0 >>\nstream\n\nendstream",)},
+    {"extra_objects": (b"<< /S /JavaScript /JS (this.print()) >>",)},  # objeto solto no arquivo
+])
+def test_active_content_is_rejected(kw):
+    with pytest.raises(PdfRejected):
+        parse_pdf(make_pdf(danfe_text(), **kw))
+
+
+def test_random_js_bytes_inside_compressed_data_are_not_malicious():
+    """Regressão: um PDF real foi recusado porque os bytes '/JS' apareciam por acaso num bloco comprimido."""
+    blob = b"<< /Length 24 >>\nstream\n\x88>\xd4^/JS\xd6\x98 /JavaScript? /Launch\nendstream"
+    p = parse_pdf(make_pdf(danfe_text(), extra_objects=(blob,)))
+    assert p.numero == "316"
+    p = parse_pdf(danfe_pdf() + b"\n% /JavaScript (isto e so um comentario)\n")
+    assert p.numero == "316"
+
+
+def test_bank_data_in_service_description_is_cut():
+    from app.parsing import cut_sensitive
+    assert cut_sensitive("Carro de som Dados bancários: Caixa Agência 4807 Conta 577 Pix 7399") == "Carro de som"
+    assert cut_sensitive("Publicidade. Chave Pix: x@y.com") == "Publicidade"
+    assert cut_sensitive("Banner lona 3x2") == "Banner lona 3x2"
+    assert cut_sensitive("Dados bancários: tudo") == ""
 
 
 @pytest.mark.parametrize("raw,cents", [("1.300,00", 130000), ("0,05", 5), ("12.345.678,90", 1234567890)])

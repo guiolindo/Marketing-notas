@@ -49,7 +49,8 @@ class ParsedNote:
 # ---------------------------------------------------------------- PDF seguro
 
 _RISKY_ACTIONS = {"/JavaScript", "/Launch", "/ImportData", "/SubmitForm", "/GoToR", "/GoToE", "/Rendition"}
-_RISKY_TOKENS = (b"/JavaScript", b"/JS", b"/Launch", b"/EmbeddedFile", b"/RichMedia", b"/XFA")
+_RISKY_KEYS = {"/JS", "/JavaScript", "/RichMedia", "/XFA", "/EmbeddedFiles", "/EmbeddedFile", "/OpenAction", "/AA"}
+_MAX_OBJECTS = 200_000
 
 
 def _resolve(obj):
@@ -59,13 +60,41 @@ def _resolve(obj):
         return obj
 
 
+def _walk_direct(obj, depth: int = 0) -> bool:
+    """True se o objeto (e o que está aninhado nele, sem seguir referências) traz algo ativo."""
+    if depth > 12:
+        return True  # aninhamento absurdo: tratado como suspeito
+    if isinstance(obj, dict):
+        if _RISKY_KEYS & set(map(str, obj.keys())):
+            return True
+        if str(obj.get("/S", "")) in _RISKY_ACTIONS or str(obj.get("/Type", "")) == "/EmbeddedFile":
+            return True
+        return any(_walk_direct(v, depth + 1) for v in obj.values() if not hasattr(v, "idnum"))
+    if isinstance(obj, list):
+        return any(_walk_direct(v, depth + 1) for v in obj if not hasattr(v, "idnum"))
+    return False
+
+
+def _has_active_content(reader: PdfReader) -> bool:
+    """Percorre os objetos de verdade (inclusive os de dentro de blocos comprimidos). Procurar bytes soltos como
+    "/JS" dá falso positivo: esses 3 bytes aparecem por acaso em qualquer dado comprimido."""
+    size = int(reader.trailer.get("/Size", 0))
+    if size > _MAX_OBJECTS:
+        raise PdfRejected("O PDF tem objetos demais.")
+    for num in range(1, size):
+        try:
+            obj = reader.get_object(num)
+        except Exception:  # noqa: BLE001 - objeto ilegível: ver abaixo
+            continue
+        if obj is not None and _walk_direct(obj):
+            return True
+    return _walk_direct(reader.trailer.get("/Root", {}))
+
+
 def open_pdf(data: bytes) -> PdfReader:
     """Abre o PDF e recusa o que não deveria entrar: protegido, grande demais, com script ou anexo."""
     if not data.startswith(b"%PDF-") and b"%PDF-" not in data[:1024]:
         raise PdfRejected("O arquivo não é um PDF.")
-    for token in _RISKY_TOKENS:
-        if token in data:
-            raise PdfRejected("O PDF contém script ou anexo embutido e foi recusado.")
     try:
         reader = PdfReader(io.BytesIO(data), strict=False)
         if reader.is_encrypted:
@@ -80,19 +109,8 @@ def open_pdf(data: bytes) -> PdfReader:
     if pages > MAX_PAGES:
         raise PdfRejected(f"O PDF tem {pages} páginas; uma nota fiscal tem no máximo {MAX_PAGES}.")
     try:
-        root = reader.trailer["/Root"]
-        if any(k in root for k in ("/OpenAction", "/AA")):
-            raise PdfRejected("O PDF executa ações ao abrir e foi recusado.")
-        names = _resolve(root.get("/Names")) if "/Names" in root else None
-        if names and ("/JavaScript" in names or "/EmbeddedFiles" in names):
-            raise PdfRejected("O PDF contém script ou anexo embutido e foi recusado.")
-        for page in reader.pages:
-            if "/AA" in page:
-                raise PdfRejected("O PDF executa ações e foi recusado.")
-            for annot in _resolve(page.get("/Annots", [])) or []:
-                action = _resolve(_resolve(annot).get("/A"))
-                if action is not None and str(action.get("/S")) in _RISKY_ACTIONS:
-                    raise PdfRejected("O PDF contém ações perigosas e foi recusado.")
+        if _has_active_content(reader):
+            raise PdfRejected("O PDF contém script, anexo ou ação automática e foi recusado.")
     except PdfRejected:
         raise
     except (PyPdfError, ValueError, KeyError, RecursionError, TypeError, AttributeError) as exc:
@@ -121,6 +139,15 @@ _CTRL = re.compile(r"[\x00-\x1f\x7f]")
 
 def clean(text: str, limit: int = 300) -> str:
     return _CTRL.sub(" ", re.sub(r"\s+", " ", text or "")).strip()[:limit]
+
+
+_SENSITIVE = re.compile(r"\b(dados\s+banc[aá]rios|banco|ag[eê]ncia|conta\s+corrente|conta\s+poupan[cç]a|c/c|pix|chave\s+pix|titular|cpf)\b", re.I)
+
+
+def cut_sensitive(text: str) -> str:
+    """Prestadores escrevem agência, conta e Pix no campo do serviço. A descrição pára antes disso: vai para a tela."""
+    m = _SENSITIVE.search(text)
+    return text[: m.start()].strip(" .;:-–—,") if m else text
 
 
 def clean_name(text: str) -> str:
@@ -340,7 +367,7 @@ def parse_nfse(text: str, pages: int) -> ParsedNote:
                 desc_lines.append(line.strip())
             if len(desc_lines) >= 4:
                 break
-    descricao = clean(" ".join(desc_lines), 500) or "Serviço prestado"
+    descricao = cut_sensitive(clean(" ".join(desc_lines), 500)) or "Serviço prestado"
 
     op = pick(read_row(lines, _find(lines, "VALOR DA OPERAÇÃO")), "OPERAÇÃO")
     desc_inc = pick(read_row(lines, _find(lines, "VALOR DA OPERAÇÃO")), "Incondicionado")
