@@ -1,0 +1,42 @@
+{%- from "macros.html" import ico -%}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1b4f8a">
+  <title>{% block title %}Notas de Marketing{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ asset_v }}">
+  <script src="/static/js/app.js?v={{ asset_v }}" defer></script>
+</head>
+<body>
+<a class="skip" href="#content">Ir para o conteúdo</a>
+{% block bare %}
+<header class="top no-print">
+  <div class="top-in">
+    <a class="brand" href="{{ '/admin' if is_admin else '/' }}" aria-label="Notas de Marketing">
+      <img src="/static/img/favicon.svg" width="34" height="34" alt="">
+      <span><strong>Notas de Marketing</strong><small>NFS-e e DANFE</small></span>
+    </a>
+    <nav class="top-nav" aria-label="Principal">
+      <a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Notas</a>
+      {% if is_admin %}
+        <a href="/admin" {% if request.url.path.startswith('/admin') %}aria-current="page"{% endif %}>Lançar</a>
+        <form method="post" action="/admin/sair"><input type="hidden" name="csrf" value="{{ csrf() }}">
+          <button class="linkbtn" type="submit">{{ ico('out', 16) }}Sair</button></form>
+      {% else %}
+        <a href="/admin" class="adm">{{ ico('lock', 15) }}Admin</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+<main class="main" id="content">
+  {% if flash %}<div class="flash {{ flash.kind }}" role="status" data-flash>{{ flash.text }}</div>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="foot no-print">Notas de Marketing · uso interno</footer>
+{% endblock %}
+</body>
+</html>

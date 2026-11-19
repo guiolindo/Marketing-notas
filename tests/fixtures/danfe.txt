@@ -1,0 +1,110 @@
+ RECEBI(EMOS) DE   , A(S) MERCADORIA(S) CONSTANTES DA NF-e INDICADA AO LADO:                                                                                                                                                                                           NF-E
+ DATA DO RECEBIMENTO               IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR                                                                                                                                                                                                             Nº@NUM@
+
+                                                                                                                                                                                                                                                               SÉRIE           1
+
+
+               GRAFICA EXEMPLO LTDA                                                                                          DANFE
+ Rua Exemplo                                                                                                       Documento Auxiliar da                        EBJJFAJBEBBGCECMBBECCFADEFFFEFBFCICEEFFFCBEFFEFFBBGBIFFCBBBMACMNBAFCBEEMGIAH
+  Nº                                                                                                                Nota Fiscal Eletrônica
+        155B              Sala 1                                                                                      0 - ENTRADA
+ Centro                                                                                                                                           1         CHAVE DE ACESSO
+ Porto Seguro                                         BA                                                              1 - SAÍDA                                               @CHAVE4@
+ CEP:            45810-000                                                                                         Nº            @NUM@                         Consulta de autenticidade no portal nacional da NF-e
+ FONE :          00000000000                                                                                       SÉRIE              1                      www.nfe.fazenda.gov.br/portal ou no site da Sefaz Autorizadora
+
+                                                                                                                   FOLHA          1   /  1
+ NATUREZA DA OPERAÇÃO
+Venda de mercadoria
+INSCRIÇÃO ESTADUAL                   INSCRIÇÃO ESTADUAL SUBST. TRIBUTÁRIA   CNPJ                                                                           PROTOCOLO DE AUTORIZAÇÃO DE USO
+000000000                                                                                      11.222.333/0001-81                                                                  100000000000000 04/03/2026 10:43:40-03:00
+  DESTINATÁRIO/REMETENTE
+  NOME / RAZÃO SOCIAL                                                                                                                                                                    CNPJ/CPF                                                              DATA DE EMISSÃO
+EMPRESA TOMADORA S/A                                                                                                                                                                     11.444.777/0001-61                                                     04/03/2026
+  ENDEREÇO                                                                                                                                                Nº            BAIRRO/DISTRITO                                                                   DATA DE ENTRADA/SAÍDA
+AVENIDA EXEMPLO                                                                                                                                  S/N                    CENTRO                                                                                  04/03/2026
+  MUNICÍPIO                                                               CEP                                  FONE/FAX                                                                       UF                 INSCRIÇÃO ESTADUAL                             HORA DE SAÍDA
+Porto Seguro                                                              45810-000                            0000000000                                               BA                                                                                       10:41:00
+  FATURA / DUPLICATA
+      NÚMERO                      VENCIMENTO                                   VALOR                NÚMERO                      VENCIMENTO                                  VALOR                  NÚMERO                      VENCIMENTO                               VALOR
+          001                   31/03/2026                         @TOTAL@
+
+
+
+
+  CÁLCULO DO IMPOSTO
+  BASE DE CÁLCULO DO ICMS                       VALOR DO ICMS                                               BASE CÁLCULO ICMS SUBSTITUIÇÃO                                VALOR DO ICMS SUBSTITUIÇÃO                              VALOR TOTAL DOS PRODUTOS
+ 0,00                                              0,00                                              0,00                                                             0,00                                                      1.500,00
+  VALOR DO FRETE                             VALOR DO SEGURO                        DESCONTO                                      OUTRAS DESPESAS ACESSÓRIAS        VALOR TOTAL DO IPI                                                   VALOR TOTAL DA NOTA
+ 0,00                                         0,00                                  @DESCONTO@                                0,00                                        0,00                                                      @TOTAL@
+  TRANSPORTADOR / VOLUMES TRANSPORTADOS
+  NOME / RAZÃO SOCIAL                                                                                                                                        FRETE POR CONTA                  CÓDIGO ANTTPLACA DO VEÍCULO      UF          CNPJ / CPF
+                                                                                                          9 - Sem Frete
+  ENDEREÇO                                                                                                              MUNICÍPIO                                                                                              UF          INSCRIÇÃO ESTADUAL
+
+
+  QUANTIDADE                       ESPÉCIE                                          MARCA                                            NUMERO                                              PESO BRUTO                                        PESO LÍQUIDO
+ 2                                                                                                                                                                                       0,000                                             0,000
+ DADOS DO PRODUTO / SERVIÇOS
+     CÓD. PROD.            DESCRIÇÃO DOS PRODUTOS / SERVIÇOS                                                                              CST   CFOP  UNID   QUANTIDADE    V. UNITÁRIO                       V.   T O TA L                                                                                                                              ALÍQUOTANCM/SHBC ICMSV. ICMSV. IPIICMS        IPI
+------------------------------------------------------------------------------------------------------------------------
+4         LONA IMPRESSA COM ILHOS            49111090 0   5102 M²   2.0000   750,00   1.500,00   0,00   0,00   0,00   0,00
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CÁLCULO DO ISSQN
+ INSCRIÇÃO MUNICIPAL                                                                  VALOR TOTAL DOS SERVIÇOS                                                      BASE DE CÁLCULO DO ISSQN                                                      VALOR DO ISSQN
+                                                  000000000
+ DADOS ADICIONAIS
+ INFORMAÇÕES COMPLEMENTARES                                                                                                                                                   RESERVADO AO FISCO
+ Valor Aprox dos Tributos: R$ 509,25
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  Impresso pelo Sistema e-Forms - NDDigital S/A - Tel. (49) 3251-8000

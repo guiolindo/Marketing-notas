@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ note.label }} · Notas de Marketing{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="crumbs"><a href="/admin">Lançar</a> / {{ note.label }}</div><h1>{{ note.emit_nome }}</h1></div></div>
+<div class="grid cols-2">
+  <form class="card" method="post" action="/admin/nota/{{ note.id }}">
+    <input type="hidden" name="csrf" value="{{ csrf() }}">
+    <h2>Classificar</h2>
+    <div class="field"><label for="categoria">Categoria</label>
+      <input id="categoria" name="categoria" type="text" maxlength="60" value="{{ note.categoria }}" placeholder="Ex.: Lonas, Brindes, Mídia"></div>
+    <div class="field"><label for="obs">Observação</label>
+      <textarea id="obs" name="obs" maxlength="1000" rows="4">{{ note.obs }}</textarea></div>
+    <div class="actions"><button class="btn primary" type="submit">Salvar</button><a class="btn" href="/admin">Cancelar</a></div>
+  </form>
+  <div class="card">
+    <h2>Dados lidos do PDF</h2>
+    <dl class="facts">
+      <dt>Tipo</dt><dd>{{ 'NFS-e' if note.kind == 'nfse' else 'DANFE' }} nº {{ note.numero }}{% if note.serie %} · série {{ note.serie }}{% endif %}</dd>
+      <dt>Emissão</dt><dd>{{ note.data_emissao|dmy }}</dd>
+      {% if note.vencimento %}<dt>Vencimento</dt><dd>{{ note.vencimento|dmy }}</dd>{% endif %}
+      <dt>Fornecedor</dt><dd>{{ note.emit_nome }}<br><span class="muted small">{{ note.emit_doc }}</span></dd>
+      <dt>Tomador</dt><dd>{{ note.tom_nome|doc }}<br><span class="muted small">{{ note.tom_doc }}</span></dd>
+      <dt>Descrição</dt><dd>{{ note.descricao }}</dd>
+      {% if note.desconto_cents %}<dt>Desconto</dt><dd>{{ note.desconto_cents|brl }}</dd>{% endif %}
+      <dt>Valor</dt><dd><strong>{{ note.valor_cents|brl }}</strong></dd>
+      <dt>Chave</dt><dd class="mono small break">{{ note.chave }}</dd>
+      <dt>Arquivo</dt><dd class="small">{{ note.original_name }} · {{ (note.file_size / 1024)|round(0)|int }} KB</dd>
+    </dl>
+    <div class="actions"><a class="btn" href="/nota/{{ note.id }}.pdf" target="_blank" rel="noopener">Abrir PDF</a></div>
+  </div>
+</div>
+{% endblock %}

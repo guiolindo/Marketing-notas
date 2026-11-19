@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Erro {{ code }} · Notas de Marketing{% endblock %}
+{% block content %}
+<section class="errbox">
+  <div class="errcode">{{ code }}</div>
+  <h1>{{ message }}</h1>
+  {% if rid %}<p class="muted small">Código do erro: {{ rid }}</p>{% endif %}
+  <p><a class="btn primary" href="/">Voltar às notas</a></p>
+</section>
+{% endblock %}

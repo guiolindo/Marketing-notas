@@ -1,0 +1,120 @@
+# Notas de Marketing
+
+Sistema web para lançar **NFS-e** e **DANFE** (PDF), somar os valores e consultar tudo com filtros.
+Qualquer pessoa com o link vê as notas, filtra, baixa uma nota ou **todas num PDF só**.
+Só o administrador (`/admin`) lança, classifica e exclui notas.
+
+Stack: FastAPI · SQLAlchemy 2 · Jinja2 · pypdf · PostgreSQL (Railway) / SQLite (dev).
+O visual (tokens, tipografia, componentes, tela de acesso) vem do repositório `Agua-e-luz---economart`.
+
+## Como funciona
+
+1. Em `/admin` o administrador entra com usuário e senha e arrasta um ou vários PDFs.
+2. O sistema lê o texto do PDF (sem OCR, sem serviço externo): tipo, número, chave de acesso, emissão,
+   fornecedor, tomador, descrição, vencimento, desconto e **valor**.
+3. O PDF original fica guardado no banco. A página inicial soma o valor, mostra os totais por mês e por
+   fornecedor e permite filtrar por texto, tipo, fornecedor, categoria, período e faixa de valor.
+4. **Baixar tudo em PDF** (botão no topo) junta os PDFs em um só, em ordem de emissão, com um marcador por nota.
+   O botão respeita os filtros ativos: filtrou um fornecedor, baixa só as notas dele. Há também exportação CSV.
+
+Layouts aceitos: **DANFSe nacional** (NFS-e) e **DANFE de NF-e modelo 55**. PDF escaneado (imagem), NFC-e e
+outros layouts são recusados com a mensagem do motivo, em vez de gravar um valor errado.
+
+### Bloqueio de duplicidade (três camadas)
+
+| Camada | Pega |
+|---|---|
+| SHA-256 do arquivo | o mesmo PDF enviado duas vezes |
+| Chave de acesso (44/50 dígitos) | a mesma nota em PDFs diferentes (reimpressão, outro visualizador) |
+| Tipo + CNPJ do emitente + série + número | a mesma nota sem chave legível |
+
+As três também são `UNIQUE` no banco: dois envios simultâneos não passam. Excluir uma nota libera o reenvio.
+
+### Conferências de integridade
+
+- DANFE: dígito verificador (módulo 11) da chave, modelo 55, CNPJ e número da chave batem com o impresso.
+- NFS-e: CNPJ do prestador e número batem com a chave.
+- Se qualquer campo essencial (chave, valor, data) não for encontrado, o arquivo é recusado.
+
+## Deploy no Railway
+
+1. **New Project → Deploy from GitHub repo** e escolha este repositório (o Railway usa `railway.json`).
+2. **+ New → Database → PostgreSQL** no mesmo projeto.
+3. No serviço web, **Variables → Raw Editor**, cole o conteúdo de [`railway.env.example`](railway.env.example) e preencha
+   `SECRET_KEY` e `ADMIN_PASSWORD` (e, se quiser, `VIEWER_PASSWORD`).
+4. **Settings → Networking → Generate Domain**. O administrador entra em `https://SEU-DOMINIO/admin`.
+5. Confira no log: o start deve terminar em `Application startup complete`. O healthcheck é `/health`.
+
+As tabelas são criadas na primeira subida. O disco do Railway não persiste entre deploys, por isso os PDFs ficam
+**no PostgreSQL** (ative os backups do plugin).
+
+### Variáveis
+
+| Variável | Obrigatória | Para quê |
+|---|---|---|
+| `DATABASE_URL` | sim | PostgreSQL (`${{Postgres.DATABASE_URL}}`). Sem ela, usa SQLite local |
+| `SECRET_KEY` | sim | assina a sessão (≥ 32 caracteres) |
+| `ADMIN_PASSWORD` | sim | senha do `/admin` (≥ 12 caracteres, letras + números/símbolos) |
+| `ADMIN_USERNAME` | não | padrão `admin` |
+| `VIEWER_PASSWORD` | não | exige senha também para **ver** as notas |
+| `DOCUMENT_ENCRYPTION_KEY` | não | criptografa os PDFs no banco (Fernet). Perdeu a chave, perdeu os PDFs |
+| `MAX_UPLOAD_MB` / `MAX_FILES_PER_UPLOAD` | não | 10 MB / 20 arquivos |
+| `TRUSTED_PROXY_COUNT` | não | proxies na frente do app (Railway = 1) |
+| `DEBUG` | não | `true` só em desenvolvimento |
+
+Com `DEBUG=false` o servidor **recusa subir** se `SECRET_KEY` ou `ADMIN_PASSWORD` estiverem ausentes ou fracas.
+
+## Segurança
+
+- **Login do administrador**: senha só em variável de ambiente (guardada em memória como hash scrypt), comparação em tempo
+  constante, mensagem única para usuário ou senha errados, atraso nas falhas e **trava por IP** (5 falhas em 15 min → 429).
+- **Sessão**: cookie assinado, `HttpOnly`, `Secure`, `SameSite=Lax`, prefixo `__Host-`; expira em 8 h ou 60 min parado;
+  sessão nova a cada login (sem fixação).
+- **CSRF**: token em todo formulário que altera dados + verificação de `Origin`.
+- **Upload**: só PDF (assinatura `%PDF-`), limite de tamanho e de quantidade, no máximo 10 páginas, recusa PDF protegido por
+  senha e PDF com JavaScript, anexos, ações de abertura ou lançamento de programas. No PDF único, anotações/links dos
+  originais são removidos.
+- **Cabeçalhos**: CSP sem `unsafe-inline`, `X-Frame-Options: DENY`, `nosniff`, HSTS, `noindex` + `robots.txt`.
+- **Banco**: consultas parametrizadas (SQLAlchemy), busca com escape de `%`/`_`, ordenação por lista fixa, CSV com
+  neutralização de fórmulas (`=`, `+`, `-`, `@`). Textos vindos do PDF são escapados na tela.
+- **Auditoria**: logins, falhas, envios, edições e exclusões (com IP) aparecem em "Atividade recente" no `/admin`.
+- **Sem dependência externa em tempo de execução**: fontes e gráficos são servidos pelo próprio sistema, sem CDN.
+
+> **Atenção sobre privacidade.** Os PDFs são documentos fiscais completos. Uma NFS-e de MEI, por exemplo, pode trazer
+> CPF e conta bancária em "Informações complementares", e o PDF original é exatamente o que fica disponível para
+> download. Se o link não deve ser público, defina `VIEWER_PASSWORD`. O CPF que alguns MEIs têm colado ao nome
+> (`NOME 01299102522`) é removido do nome exibido na tela, mas continua no PDF.
+
+## Desenvolvimento
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+cp .env.example .env     # DEBUG=true, SECRET_KEY e ADMIN_PASSWORD
+python run.py            # http://127.0.0.1:8000  ·  http://127.0.0.1:8000/admin
+
+ruff check --select F,E9 .
+python -m pytest -q                          # SQLite
+TEST_DATABASE_URL=postgresql://... pytest -q # contra um PostgreSQL de verdade
+```
+
+Os testes não usam PDFs reais: `tests/fixtures/*.txt` são os textos dos dois layouts, anonimizados e com marcadores, e
+`tests/helpers.py` monta PDFs sintéticos com chaves de acesso válidas.
+
+```
+app/
+  main.py          fábrica do app, middlewares e tratamento de erros
+  routes.py        páginas públicas e /admin
+  security.py      sessão, login, trava, CSRF, cabeçalhos
+  parsing.py       leitura do PDF (NFS-e / DANFE) e validação do arquivo
+  services/notes.py lançamento + duplicidade, filtros, totais, CSV, PDF único
+  models.py        Note, LoginAttempt, AuditLog
+  templates/ static/
+```
+
+## Limitações conhecidas
+
+- Só lê PDFs com texto selecionável (o original do emissor). Foto ou PDF escaneado é recusado.
+- Layouts de NFS-e municipais fora do padrão nacional (DANFSe) não são reconhecidos.
+- Sem migrações de banco (Alembic): as tabelas são criadas na subida. Para mudar o esquema no futuro, adicione migrações.
+- A trava de login conta por IP; atrás de um proxy diferente do Railway ajuste `TRUSTED_PROXY_COUNT`.

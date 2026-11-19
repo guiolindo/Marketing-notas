@@ -1,0 +1,27 @@
+{%- from "macros.html" import ico -%}
+{% extends "base.html" %}
+{% block title %}{{ 'Admin' if mode == 'admin' else 'Acesso' }} · Notas de Marketing{% endblock %}
+{% block bare %}
+<div class="auth">
+  {% include "_auth_brand.html" %}
+  <main class="auth-form" id="content">
+    <div class="auth-box">
+      <h1>{{ 'Área do administrador' if mode == 'admin' else 'Acesso às notas' }}</h1>
+      <p class="sub">{{ 'Entre para lançar e gerenciar notas.' if mode == 'admin' else 'Informe a senha de acesso.' }}</p>
+      <form method="post" action="{{ action }}" autocomplete="on">
+        <input type="hidden" name="csrf" value="{{ csrf() }}">
+        {% if error %}<div class="flash error" role="alert">{{ error }}</div>{% endif %}
+        {% if mode == 'admin' %}
+        <div class="field"><label for="u">Usuário</label>
+          <div class="inwrap">{{ ico('user') }}<input id="u" name="usuario" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="200" required autofocus></div></div>
+        {% endif %}
+        <div class="field"><label for="p">Senha</label>
+          <div class="inwrap">{{ ico('lock') }}<input id="p" name="senha" type="password" autocomplete="current-password" maxlength="200" required {{ '' if mode == 'admin' else 'autofocus' }}>
+            <button class="pwtoggle" type="button" data-toggle-password="#p" aria-controls="p" aria-pressed="false">Mostrar</button></div></div>
+        <button class="btn primary block" type="submit">Entrar</button>
+      </form>
+      {% if mode == 'admin' %}<p class="hint"><a href="/">← Voltar às notas</a></p>{% endif %}
+    </div>
+  </main>
+</div>
+{% endblock %}
