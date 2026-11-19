@@ -8,8 +8,8 @@
     <h1>Notas fiscais</h1>
   </div>
   <div class="actions head-actions">
-    <a class="btn accent big" href="{{ build_url('/baixar-tudo.pdf', f.raw) }}" {% if not stats.count %}aria-disabled="true" tabindex="-1"{% endif %}>
-      {{ ico('files') }}{{ 'Baixar filtradas em PDF' if f.active else 'Baixar tudo em PDF' }}{% if stats.count %}<span class="pill">{{ stats.count }}</span>{% endif %}</a>
+    <a class="btn cta" href="{{ build_url('/baixar-tudo.pdf', f.raw) }}" {% if not stats.count %}aria-disabled="true" tabindex="-1"{% endif %}>
+      {{ ico('files', 22) }}<span class="cta-txt">{{ 'Baixar filtradas em PDF' if f.active else 'Baixar tudo em PDF' }}</span>{% if stats.count %}<span class="pill">{{ stats.count }}</span>{% endif %}</a>
     <a class="btn" href="{{ build_url('/exportar.csv', f.raw) }}">{{ ico('sheet') }}CSV</a>
   </div>
 </div>
