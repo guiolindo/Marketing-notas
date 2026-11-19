@@ -30,6 +30,7 @@ from app.security import (
     session_roles,
     verify_csrf,
 )
+from app.services.devices import DeviceTracker
 from app.services.merge import MergeError, merge_key, merge_pdfs
 from app.services.notes import (
     Filters,
@@ -95,7 +96,7 @@ def list_view(request: Request, db: Session, admin: bool, results=None):
     base = "/admin" if admin else "/"
     return render(request, "list.html", f=f, stats=stats, notes=notes, page=page, pages=pages, base=base,
                   fornecedores=fornecedores, categorias=categorias, results=results, per_page=PER_PAGE,
-                  presets=PRESETS, max_banner=MAX_TEXT, max_mb=request.app.state.settings.max_upload_mb,
+                  devices=DeviceTracker.summary(db) if admin else None, presets=PRESETS, max_banner=MAX_TEXT, max_mb=request.app.state.settings.max_upload_mb,
                   max_files=request.app.state.settings.max_files_per_upload,
                   recent=db.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(12)).all() if admin else [])
 

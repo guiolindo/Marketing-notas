@@ -22,6 +22,12 @@ O visual (tokens, tipografia, componentes, tela de acesso) vem do repositório `
 adicionadas"), escreve a sua (até 200 caracteres, com cor azul/laranja/verde) ou desliga. O aviso aparece para todos os
 visitantes, fica salvo no banco (sobrevive a deploys) e muda em até 15 segundos.
 
+**Dispositivos**: o `/admin` mostra quantos aparelhos diferentes abriram o site (total, hoje, últimos 7 dias), por tipo
+(celular/tablet/computador), navegador e sistema, e os últimos aparelhos. É uma contagem **anônima**: cada aparelho recebe
+um código aleatório num cookie próprio e só o *hash* dele é guardado, junto com navegador/sistema/tipo. **Não** se grava IP,
+localização, o texto bruto do navegador nem o modelo do aparelho. Robôs, `/health`, estáticos, PDFs e erros não contam, e
+quem ativa "Não rastrear" (DNT/Sec-GPC) não é contado nem recebe o cookie.
+
 Layouts aceitos: **DANFSe nacional** (NFS-e) e **DANFE de NF-e modelo 55**. PDF escaneado (imagem), NFC-e e
 outros layouts são recusados com a mensagem do motivo, em vez de gravar um valor errado.
 

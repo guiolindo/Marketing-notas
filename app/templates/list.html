@@ -192,6 +192,30 @@
   {% endif %}
 </section>
 
+{% if devices %}
+<section class="card devices" aria-labelledby="dev-h">
+  <div class="card-head"><h2 id="dev-h">Dispositivos que acessaram o site</h2><span class="muted small">contagem anônima · sem IP</span></div>
+  <div class="grid cols-3 dev-kpis">
+    <div class="kpi"><div class="label">Dispositivos diferentes</div><div class="value">{{ devices.total }}</div><div class="sub">desde que a contagem começou</div></div>
+    <div class="kpi alt"><div class="label">Hoje</div><div class="value">{{ devices.today }}</div><div class="sub">acessaram hoje</div></div>
+    <div class="kpi"><div class="label">Últimos 7 dias</div><div class="value">{{ devices.week }}</div><div class="sub">acessaram na semana</div></div>
+  </div>
+  {% if devices.total %}
+  <div class="dev-split">
+    <div><h3 class="dev-h3">Tipo</h3><ul class="dev-chips">{% for k, n in devices.kinds %}<li><strong>{{ k }}</strong> {{ n }}</li>{% endfor %}</ul></div>
+    <div><h3 class="dev-h3">Navegador</h3><ul class="dev-chips">{% for k, n in devices.browsers %}<li><strong>{{ k }}</strong> {{ n }}</li>{% endfor %}</ul></div>
+    <div><h3 class="dev-h3">Sistema</h3><ul class="dev-chips">{% for k, n in devices.systems %}<li><strong>{{ k }}</strong> {{ n }}</li>{% endfor %}</ul></div>
+  </div>
+  <details class="dev-list"><summary>Últimos dispositivos</summary>
+    <ul>{% for d in devices.recent %}
+      <li><span class="dev-main"><strong>{{ d.browser }}</strong> · {{ d.os }}</span><span class="dev-kind">{{ d.kind }}</span>
+        <span class="muted small dev-sub">{{ d.visits }} acesso{{ 's' if d.visits != 1 }} · 1º {{ d.first }} · último {{ d.last }}</span></li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+  <p class="muted small dev-note">Cada aparelho é contado uma vez, por um código aleatório guardado nele. Não guardamos IP, localização nem o texto do navegador, e robôs não entram. Quem ativa "Não rastrear" no navegador não é contado.</p>
+</section>
+{% endif %}
+
 {% if is_admin and recent %}
 <details class="card audit">
   <summary>Atividade recente</summary>

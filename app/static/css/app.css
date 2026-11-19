@@ -143,6 +143,16 @@ input[type=search]::-webkit-search-cancel-button { cursor: pointer; }
 .opt-box.ok { border-left: 5px solid var(--ok); } .opt-box.warn { border-left: 5px solid var(--orange); } .opt-box.info { border-left: 5px solid var(--accent); } .opt-box.off { border-left: 5px solid var(--line-strong); }
 .opt:hover .opt-box { border-color: var(--line-strong); } .opt input:checked + .opt-box { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px rgba(27,79,138,.14); } .opt input:focus-visible + .opt-box { outline: 2px solid var(--accent); outline-offset: 2px; }
 .row-custom { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 12px; }
+/* dispositivos */
+.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dev-kpis { margin-bottom: 14px; }
+.dev-split { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 12px; }
+.dev-h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 6px; }
+.dev-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.dev-chips li { background: var(--surface-3); border: 1px solid var(--line); border-radius: 12px; padding: 2px 10px; font-size: 12.5px; } .dev-chips li strong { margin-right: 4px; }
+.dev-list summary { cursor: pointer; font-weight: 600; color: var(--ink-2); } .dev-list ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.dev-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); } .dev-list li:last-child { border-bottom: 0; }
+.dev-main { overflow-wrap: anywhere; } .dev-kind { font-size: 12px; color: var(--accent); font-weight: 700; } .dev-sub { grid-column: 1 / -1; }
+.dev-note { margin: 12px 0 0; }
 /* envio */
 .upload-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; align-items: stretch; }
 .drop { border: 2px dashed var(--line-strong); border-radius: 10px; background: var(--surface-2); padding: 28px 18px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; font-weight: 400; transition: border-color .18s, background .18s, transform .18s, box-shadow .18s; }
@@ -257,7 +267,7 @@ tfoot td { font-weight: 700; background: var(--surface-2); border-bottom: 0; } t
   .upload-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; } .drop { padding: 20px 12px; } .drop strong { font-size: 15px; }
   .res { grid-template-columns: minmax(0, 1fr); gap: 2px; } .fname, .rmsg { white-space: normal; overflow-wrap: anywhere; }
   .facts { grid-template-columns: minmax(0, 1fr); gap: 0; } .facts dd { margin-bottom: 8px; overflow-wrap: anywhere; }
-  .cols-2 { grid-template-columns: minmax(0, 1fr); }
+  .cols-2, .dev-split { grid-template-columns: minmax(0, 1fr); } .cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dev-kpis .kpi:first-child { grid-column: 1 / -1; }
   .site-banner { padding: 12px 14px; font-size: 15px; } .row-custom { grid-template-columns: minmax(0, 1fr); } .opts { grid-template-columns: minmax(0, 1fr); }
 
   /* cada nota vira um cartão empilhado (sem rolagem lateral) */

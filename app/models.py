@@ -94,3 +94,18 @@ class SiteSetting(Base):
 
     key: Mapped[str] = mapped_column(String(40), primary_key=True)
     value: Mapped[str] = mapped_column(Text, default="")
+
+
+class Device(Base):
+    """Um aparelho que abriu o site. Sem IP e sem o texto bruto do navegador: só uma identidade anônima (hash de um
+    número aleatório guardado no cookie do próprio aparelho) e o tipo/navegador/sistema."""
+
+    __tablename__ = "devices"
+
+    id_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    visits: Mapped[int] = mapped_column(Integer, default=1)
+    browser: Mapped[str] = mapped_column(String(30), default="")
+    os: Mapped[str] = mapped_column(String(30), default="")
+    kind: Mapped[str] = mapped_column(String(15), default="")  # Celular | Tablet | Computador

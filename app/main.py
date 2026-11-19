@@ -6,6 +6,7 @@ import threading
 import uuid
 
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -24,6 +25,7 @@ from app.security import (
     RateLimiter,
     apply_security_headers,
 )
+from app.services.devices import COOKIE_RE, DeviceTracker, new_visitor_id
 from app.services.merge import MergeCache
 from app.services.site import BannerStore
 from app.web import BASE, render
@@ -40,6 +42,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.SessionLocal = init_db(engine)
+    app.state.devices = DeviceTracker(app.state.SessionLocal)
     app.state.banner = BannerStore(app.state.SessionLocal)
     app.state.vault = Vault(settings.document_encryption_key)
     app.state.merge_cache = MergeCache(settings.merge_cache_mb * 1024 * 1024)
@@ -74,7 +77,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 return PlainTextResponse("Envio grande demais.", status_code=413)
         response = await call_next(request)
         apply_security_headers(response, request, settings)
+        await _count_device(request, response)
         return response
+
+    async def _count_device(request: Request, response) -> None:
+        """Conta o aparelho (anônimo, sem IP) quando ele abre uma página. Respeita "Não rastrear" (DNT / Sec-GPC)."""
+        path = request.url.path
+        if (request.method != "GET" or response.status_code != 200 or path.startswith(("/static/", "/nota/"))
+                or path in ("/health", "/robots.txt", "/baixar-tudo.pdf", "/exportar.csv")
+                or "text/html" not in response.headers.get("content-type", "")
+                or request.headers.get("dnt") == "1" or request.headers.get("sec-gpc") == "1"):
+            return
+        name = "nm_dev" if settings.debug else "__Host-nm_dev"
+        vid = request.cookies.get(name, "")
+        if not COOKIE_RE.match(vid):
+            vid = new_visitor_id()
+            response.set_cookie(name, vid, max_age=365 * 24 * 3600, httponly=True, secure=not settings.debug,
+                                samesite="lax", path="/")
+        try:
+            await run_in_threadpool(app.state.devices.touch, vid, request.headers.get("user-agent", ""))
+        except Exception:  # noqa: BLE001 - a contagem nunca pode derrubar uma página
+            log.warning("falha ao contar dispositivo", exc_info=True)
 
     app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
     app.include_router(router)
