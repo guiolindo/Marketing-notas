@@ -68,6 +68,13 @@ As tabelas são criadas na primeira subida. O disco do Railway não persiste ent
 
 Com `DEBUG=false` o servidor **recusa subir** se `SECRET_KEY` ou `ADMIN_PASSWORD` estiverem ausentes ou fracas.
 
+## Celular
+
+Abaixo de 768 px a tela é pensada para rolar só para cima e para baixo (padrão do `elei-es`): topo compacto com área segura
+do aparelho, abas fixas embaixo (Notas / Lançar / Sair), filtros recolhidos atrás de um botão, cada nota como um cartão
+empilhado com o valor em destaque, campos com 16 px (o iPhone não dá zoom ao tocar) e `overflow-x: clip` como rede de
+segurança. Ao mexer no CSS, confira em celular emulado (`isMobile`) que `scrollWidth <= clientWidth` em todas as telas.
+
 ## Desempenho e proteção contra falhas
 
 Técnicas adaptadas do `notas-despesas` (teto de páginas, falha explícita, limites nas rotas caras):

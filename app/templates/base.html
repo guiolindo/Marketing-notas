@@ -36,6 +36,15 @@
   {% if flash %}<div class="flash {{ flash.kind }}" role="status" data-flash>{{ flash.text }}</div>{% endif %}
   {% block content %}{% endblock %}
 </main>
+<nav class="m-nav no-print" aria-label="Menu">
+  <a href="/" {% if request.url.path == '/' %}class="on" aria-current="page"{% endif %}>{{ ico('files') }}<span>Notas</span></a>
+  {% if is_admin %}
+  <a href="/admin" {% if request.url.path.startswith('/admin') %}class="on" aria-current="page"{% endif %}>{{ ico('upload') }}<span>Lançar</span></a>
+  <form method="post" action="/admin/sair"><input type="hidden" name="csrf" value="{{ csrf() }}"><button type="submit">{{ ico('out') }}<span>Sair</span></button></form>
+  {% else %}
+  <a href="/admin">{{ ico('lock') }}<span>Admin</span></a>
+  {% endif %}
+</nav>
 <footer class="foot no-print">Notas de Marketing · uso interno</footer>
 {% endblock %}
 </body>

@@ -25,6 +25,16 @@
     });
   });
 
+  // Filtros no celular: começam recolhidos (abertos se já houver filtro ativo)
+  document.querySelectorAll("form[data-filters]").forEach(function (form) {
+    var btn = form.querySelector("[data-filters-toggle]");
+    var small = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+    var active = !!btn.querySelector(".pill");
+    function set(open) { form.classList.toggle("f-closed", !open); btn.setAttribute("aria-expanded", String(open)); }
+    if (small && !active) set(false);
+    btn.addEventListener("click", function () { set(form.classList.contains("f-closed")); });
+  });
+
   // Mensagens de sucesso somem sozinhas
   document.querySelectorAll("[data-flash].ok").forEach(function (el) {
     setTimeout(function () { el.style.transition = "opacity .4s"; el.style.opacity = "0"; }, 5000);

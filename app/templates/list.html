@@ -89,28 +89,31 @@
 </section>
 {% endif %}
 
-<form class="card filters" method="get" action="{{ base }}" data-autosubmit aria-label="Filtros">
+<form class="card filters" method="get" action="{{ base }}" data-autosubmit data-filters aria-label="Filtros">
   <div class="filter-grid">
     <div class="field f-q"><label for="q">Buscar</label>
       <div class="inwrap">{{ ico('search', 17) }}<input id="q" name="q" type="search" value="{{ f.q }}" maxlength="100" placeholder="Fornecedor, descrição, número, chave…"></div></div>
+    <button class="btn f-toggle" type="button" data-filters-toggle aria-expanded="true" aria-controls="f-more">Filtros{% if f.active %}<span class="pill on">ativos</span>{% endif %}</button>
+    <div class="f-more" id="f-more">
     <div class="field"><label for="tipo">Tipo</label>
       <select id="tipo" name="tipo"><option value="">Todos</option>
         <option value="nfse" {{ 'selected' if f.kind == 'nfse' }}>NFS-e</option><option value="danfe" {{ 'selected' if f.kind == 'danfe' }}>DANFE</option></select></div>
-    <div class="field"><label for="fornecedor">Fornecedor</label>
+    <div class="field"><label for="ordem">Ordenar por</label>
+      <select id="ordem" name="ordem">
+        {% for k, t in [('data_desc', 'Mais recentes'), ('data_asc', 'Mais antigas'), ('valor_desc', 'Maior valor'), ('valor_asc', 'Menor valor'), ('fornecedor', 'Fornecedor (A–Z)')] %}
+        <option value="{{ k }}" {{ 'selected' if f.ordem == k }}>{{ t }}</option>{% endfor %}</select></div>
+    <div class="field wide"><label for="fornecedor">Fornecedor</label>
       <select id="fornecedor" name="fornecedor"><option value="">Todos</option>
         {% for doc, nome in fornecedores %}<option value="{{ doc }}" {{ 'selected' if f.fornecedor == doc }}>{{ nome }}</option>{% endfor %}</select></div>
-    <div class="field"><label for="categoria">Categoria</label>
+    <div class="field wide"><label for="categoria">Categoria</label>
       <select id="categoria" name="categoria"><option value="">Todas</option>
         {% for c in categorias %}<option value="{{ c }}" {{ 'selected' if f.categoria == c }}>{{ c }}</option>{% endfor %}</select></div>
     <div class="field"><label for="de">Emitida de</label><input id="de" name="de" type="date" value="{{ f.raw.get('de', '') }}"></div>
     <div class="field"><label for="ate">até</label><input id="ate" name="ate" type="date" value="{{ f.raw.get('ate', '') }}"></div>
     <div class="field"><label for="vmin">Valor mín. (R$)</label><input id="vmin" name="vmin" type="text" inputmode="decimal" value="{{ f.raw.get('vmin', '') }}" placeholder="0,00"></div>
     <div class="field"><label for="vmax">Valor máx. (R$)</label><input id="vmax" name="vmax" type="text" inputmode="decimal" value="{{ f.raw.get('vmax', '') }}" placeholder="0,00"></div>
-    <div class="field"><label for="ordem">Ordenar por</label>
-      <select id="ordem" name="ordem">
-        {% for k, t in [('data_desc', 'Mais recentes'), ('data_asc', 'Mais antigas'), ('valor_desc', 'Maior valor'), ('valor_asc', 'Menor valor'), ('fornecedor', 'Fornecedor (A–Z)')] %}
-        <option value="{{ k }}" {{ 'selected' if f.ordem == k }}>{{ t }}</option>{% endfor %}</select></div>
     <div class="field f-btn"><button class="btn primary" type="submit">Filtrar</button>{% if f.active %}<a class="btn" href="{{ base }}">Limpar</a>{% endif %}</div>
+    </div>
   </div>
 </form>
 
