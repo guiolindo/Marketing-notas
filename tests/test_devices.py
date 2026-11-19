@@ -69,17 +69,15 @@ def test_cookie_is_private_and_hashed_in_db(tmp_path):
         blob = " ".join(str(v) for v in rows[0].values())
         assert raw_id not in blob                 # o código do cookie não é guardado, só o hash
         assert "Mozilla" not in blob and "SM-S918B" not in blob and "testclient" not in blob and "127.0.0.1" not in blob
-        assert set(rows[0].keys()) == {"id_hash", "first_seen", "last_seen", "visits", "browser", "os", "kind"}
+        assert set(rows[0].keys()) == {"id_hash", "first_seen", "last_seen", "visits", "browser", "os", "kind", "model"}
 
 
-def test_bots_static_health_pdf_and_dnt_are_not_counted(tmp_path):
+def test_bots_static_health_pdf_and_gpc_are_not_counted(tmp_path):
     with _client(tmp_path) as c:
         c.get("/", headers={"user-agent": GOOGLEBOT})
         c.get("/health", headers={"user-agent": CHROME_ANDROID})
         c.get("/static/css/app.css", headers={"user-agent": CHROME_ANDROID})
         c.get("/robots.txt", headers={"user-agent": CHROME_ANDROID})
-        r = c.get("/", headers={"user-agent": CHROME_ANDROID, "dnt": "1"})
-        assert "nm_dev" not in r.headers.get("set-cookie", "")
         r = c.get("/", headers={"user-agent": CHROME_ANDROID, "sec-gpc": "1"})
         assert "nm_dev" not in r.headers.get("set-cookie", "")
         with c.app.state.engine.connect() as conn:
@@ -107,3 +105,71 @@ def test_tracking_failure_never_breaks_pages(tmp_path):
         def boom(*a, **k): raise RuntimeError("banco fora")
         c.app.state.devices.touch = boom
         assert c.get("/", headers={"user-agent": CHROME_ANDROID}).status_code == 200
+
+
+def test_dnt_header_alone_does_not_block_but_gpc_does(tmp_path):
+    with _client(tmp_path) as c:
+        assert "nm_dev" in c.get("/", headers={"user-agent": CHROME_ANDROID, "dnt": "1"}).headers["set-cookie"]
+
+
+# ---------------------------------------------------------------- modelo do aparelho
+
+def test_html_asks_chrome_for_the_model(client):
+    assert client.get("/").headers["accept-ch"] == "Sec-CH-UA-Model"
+    assert "accept-ch" not in client.get("/static/css/app.css").headers
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ('"SM-S918B"', "Samsung SM-S918B"), ('"Pixel 7"', "Pixel 7"), ('"moto g54 5G"', "moto g54 5G"),
+    ('"K"', ""), ('""', ""), ("", ""), ('"Generic Android"', ""), ("<script>x</script>", ""), ('"' + "x" * 80 + '"', ""),
+])
+def test_clean_model(raw, expected):
+    from app.services.devices import clean_model
+    assert clean_model(raw) == expected
+
+
+def test_model_arrives_on_second_visit_and_shows_in_panel(tmp_path):
+    with _client(tmp_path) as base:
+        phone = TestClient(base.app, base_url="https://testserver")
+        phone.get("/", headers={"user-agent": CHROME_ANDROID})                                   # 1º acesso: sem dica
+        phone.get("/", headers={"user-agent": CHROME_ANDROID, "sec-ch-ua-model": '"SM-S918B"'})  # 2º: Chrome manda o modelo
+        base.csrf = login(base)
+        html = base.get("/admin", headers={"user-agent": EDGE_WIN}).text
+        assert "Samsung SM-S918B" in html and 'class="dev-h3">Modelo' in html
+        with base.app.state.engine.connect() as conn:
+            assert conn.execute(text("select model from devices where kind = 'Celular'")).scalar() == "Samsung SM-S918B"
+
+
+def test_adds_model_column_to_existing_database(tmp_path):
+    from sqlalchemy import create_engine, inspect
+
+    from app.database import init_db
+    url = f"sqlite:///{tmp_path}/old.db"
+    eng = create_engine(url)
+    with eng.begin() as conn:  # tabela como era antes da coluna "model"
+        conn.execute(text("create table devices (id_hash varchar(64) primary key, first_seen datetime, last_seen datetime,"
+                          " visits integer, browser varchar(30), os varchar(30), kind varchar(15))"))
+        conn.execute(text("insert into devices values ('abc', '2026-01-01', '2026-01-02', 3, 'Chrome', 'Android', 'Celular')"))
+    init_db(eng)
+    assert "model" in {c["name"] for c in inspect(eng).get_columns("devices")}
+    with eng.connect() as conn:
+        assert conn.execute(text("select visits from devices")).scalar() == 3  # dados antigos preservados
+    init_db(eng)  # rodar de novo não quebra
+
+
+# ---------------------------------------------------------------- "este aparelho foi contado?"
+
+def test_panel_tells_whether_this_device_was_counted(tmp_path):
+    with _client(tmp_path) as c:
+        c.headers["user-agent"] = CHROME_ANDROID
+        c.csrf = login(c)
+        h = {"user-agent": CHROME_ANDROID}
+        c.get("/admin", headers=h)
+        assert "Este aparelho — Contado: Chrome · Android" in c.get("/admin", headers=h).text
+        assert "sinal de privacidade (Sec-GPC)" in c.get("/admin", headers={**h, "sec-gpc": "1"}).text
+        assert "robô" in c.get("/admin", headers={"user-agent": GOOGLEBOT}).text
+
+
+def test_footer_has_no_tracking_notice(client):
+    html = client.get("/").text
+    assert "contagem anônima de acessos" not in html and "uso interno" in html

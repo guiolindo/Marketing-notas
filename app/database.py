@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import Request
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -27,7 +27,20 @@ def make_engine(settings: Settings) -> Engine:
     return create_engine(url, pool_pre_ping=True, pool_recycle=1800)
 
 
+# colunas adicionadas depois da primeira versão: create_all não altera tabela que já existe
+_NEW_COLUMNS = [("devices", "model", "VARCHAR(40) DEFAULT ''")]
+
+
+def _add_missing_columns(engine: Engine) -> None:
+    insp = inspect(engine)
+    for table, column, ddl in _NEW_COLUMNS:
+        if insp.has_table(table) and column not in {c["name"] for c in insp.get_columns(table)}:
+            with engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+
+
 def init_db(engine: Engine) -> sessionmaker[Session]:
+    _add_missing_columns(engine)
     Base.metadata.create_all(engine)
     return sessionmaker(engine, expire_on_commit=False)
 

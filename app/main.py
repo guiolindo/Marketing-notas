@@ -77,16 +77,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 return PlainTextResponse("Envio grande demais.", status_code=413)
         response = await call_next(request)
         apply_security_headers(response, request, settings)
+        if "text/html" in response.headers.get("content-type", ""):
+            response.headers["Accept-CH"] = "Sec-CH-UA-Model"  # pede ao Chrome/Edge o modelo do aparelho (Android)
         await _count_device(request, response)
         return response
 
     async def _count_device(request: Request, response) -> None:
-        """Conta o aparelho (anônimo, sem IP) quando ele abre uma página. Respeita "Não rastrear" (DNT / Sec-GPC)."""
+        """Conta o aparelho (anônimo, sem IP) quando ele abre uma página. Respeita o sinal Sec-GPC (o antigo DNT foi descontinuado)."""
         path = request.url.path
         if (request.method != "GET" or response.status_code != 200 or path.startswith(("/static/", "/nota/"))
                 or path in ("/health", "/robots.txt", "/baixar-tudo.pdf", "/exportar.csv")
                 or "text/html" not in response.headers.get("content-type", "")
-                or request.headers.get("dnt") == "1" or request.headers.get("sec-gpc") == "1"):
+                or request.headers.get("sec-gpc") == "1"):
             return
         name = "nm_dev" if settings.debug else "__Host-nm_dev"
         vid = request.cookies.get(name, "")
@@ -95,7 +97,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             response.set_cookie(name, vid, max_age=365 * 24 * 3600, httponly=True, secure=not settings.debug,
                                 samesite="lax", path="/")
         try:
-            await run_in_threadpool(app.state.devices.touch, vid, request.headers.get("user-agent", ""))
+            await run_in_threadpool(app.state.devices.touch, vid, request.headers.get("user-agent", ""),
+                                    request.headers.get("sec-ch-ua-model", ""))
         except Exception:  # noqa: BLE001 - a contagem nunca pode derrubar uma página
             log.warning("falha ao contar dispositivo", exc_info=True)
 

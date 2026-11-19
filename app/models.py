@@ -109,3 +109,4 @@ class Device(Base):
     browser: Mapped[str] = mapped_column(String(30), default="")
     os: Mapped[str] = mapped_column(String(30), default="")
     kind: Mapped[str] = mapped_column(String(15), default="")  # Celular | Tablet | Computador
+    model: Mapped[str] = mapped_column(String(40), default="")  # só quando o navegador informa (Chrome no Android)

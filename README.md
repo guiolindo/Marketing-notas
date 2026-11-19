@@ -23,10 +23,11 @@ adicionadas"), escreve a sua (até 200 caracteres, com cor azul/laranja/verde) o
 visitantes, fica salvo no banco (sobrevive a deploys) e muda em até 15 segundos.
 
 **Dispositivos**: o `/admin` mostra quantos aparelhos diferentes abriram o site (total, hoje, últimos 7 dias), por tipo
-(celular/tablet/computador), navegador e sistema, e os últimos aparelhos. É uma contagem **anônima**: cada aparelho recebe
-um código aleatório num cookie próprio e só o *hash* dele é guardado, junto com navegador/sistema/tipo. **Não** se grava IP,
-localização, o texto bruto do navegador nem o modelo do aparelho. Robôs, `/health`, estáticos, PDFs e erros não contam, e
-quem ativa "Não rastrear" (DNT/Sec-GPC) não é contado nem recebe o cookie.
+(celular/tablet/computador), navegador, sistema e **modelo** (só quando o navegador informa: Chrome/Edge no Android, via
+`Sec-CH-UA-Model`; iPhone e Safari não informam). A contagem é **anônima**: cada aparelho recebe um código aleatório num
+cookie próprio e só o *hash* dele é guardado. **Não** se grava IP, localização nem o texto bruto do navegador. Robôs,
+`/health`, estáticos, PDFs e erros não contam, nem quem envia o sinal `Sec-GPC`. O cartão também diz se o aparelho de quem
+está vendo foi contado e, se não, o motivo.
 
 Layouts aceitos: **DANFSe nacional** (NFS-e) e **DANFE de NF-e modelo 55**. PDF escaneado (imagem), NFC-e e
 outros layouts são recusados com a mensagem do motivo, em vez de gravar um valor errado.
