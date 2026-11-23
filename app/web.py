@@ -15,6 +15,16 @@ BASE = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 templates.env.filters["brl"] = brl
 templates.env.filters["dmy"] = lambda d: d.strftime("%d/%m/%Y") if d else "—"
+def _dthr(dt) -> str:
+    if not dt:
+        return "—"
+    from datetime import timezone
+    from zoneinfo import ZoneInfo
+    dt = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(ZoneInfo("America/Bahia")).strftime("%d/%m/%Y %H:%M")
+
+
+templates.env.filters["dthr"] = _dthr
 templates.env.filters["doc"] = lambda s: s or "—"
 
 

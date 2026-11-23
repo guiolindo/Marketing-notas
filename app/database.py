@@ -28,7 +28,17 @@ def make_engine(settings: Settings) -> Engine:
 
 
 # colunas adicionadas depois da primeira versão: create_all não altera tabela que já existe
-_NEW_COLUMNS = [("devices", "model", "VARCHAR(40) DEFAULT ''")]
+_NEW_COLUMNS = [
+    ("devices", "model", "VARCHAR(40) DEFAULT ''"),
+    ("notes", "data_lancamento", "DATE"),
+    ("notes", "situacao", "VARCHAR(16) DEFAULT 'sem_lancamento'"),
+    ("notes", "nominal_cents", "BIGINT DEFAULT 0"),
+    ("notes", "pago_cents", "BIGINT DEFAULT 0"),
+    ("notes", "ultimo_pagamento", "DATE"),
+    ("notes", "proximo_vencimento", "DATE"),
+    ("notes", "conciliado_em", "TIMESTAMP WITH TIME ZONE"),
+    ("notes", "conciliacao_obs", "VARCHAR(300) DEFAULT ''"),
+]
 
 
 def _add_missing_columns(engine: Engine) -> None:

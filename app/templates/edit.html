@@ -29,4 +29,27 @@
     <div class="actions"><a class="btn" href="/nota/{{ note.id }}.pdf" target="_blank" rel="noopener">Abrir PDF</a></div>
   </div>
 </div>
+
+<section class="card">
+  <div class="card-head"><h2>Lançamento e pagamento (ERP)</h2>
+    <span class="sit sit-{{ {'paga':'paga','parcial':'parcial','a_pagar':'aberto','sem_lancamento':'sem'}[note.situacao] }}">{{ {'paga':'Paga','parcial':'Paga em parte','a_pagar':'A pagar','sem_lancamento':'Sem lançamento'}[note.situacao] }}</span></div>
+  {% if note.situacao == 'sem_lancamento' %}
+  <p class="muted">Ainda não conciliada. Os dados chegam pela importação do arquivo de conciliação em <a href="/admin#conciliacao">Conciliação</a>.</p>
+  {% else %}
+  <dl class="facts">
+    <dt>Lançamento</dt><dd>{{ note.data_lancamento|dmy }}</dd>
+    <dt>Pago</dt><dd>{{ note.pago_cents|brl }} de {{ (note.nominal_cents or note.valor_cents)|brl }}{% if note.aberto_cents %} · em aberto {{ note.aberto_cents|brl }}{% endif %}</dd>
+    {% if note.conciliacao_obs %}<dt>Conciliação</dt><dd class="small">{{ note.conciliacao_obs }}</dd>{% endif %}
+    <dt>Atualizado</dt><dd class="small">{{ note.conciliado_em|dthr }}</dd>
+  </dl>
+  {% if note.titulos %}
+  <ul class="pl-tit big">{% for t in note.titulos %}
+    <li><strong>{{ t.titulo or ('parcela ' ~ t.parcela) }}</strong> · venc. {{ t.vencimento|dmy }} · {{ t.valor_nominal_cents|brl }} ·
+      {% if t.pago %}<span class="ok-txt">pago em {{ t.data_pagamento|dmy }}</span>{% elif t.valor_pago_cents %}pago {{ t.valor_pago_cents|brl }} em {{ t.data_pagamento|dmy }}{% elif t.data_pagamento %}pagamento previsto {{ t.data_pagamento|dmy }}{% else %}em aberto{% endif %}
+      {% if t.especie %}<span class="muted small">· {{ t.especie }}</span>{% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+  <form method="post" action="/admin/nota/{{ note.id }}/limpar-conciliacao" data-confirm="Remover lançamento e parcelas de {{ note.label }}? Volta para 'Sem lançamento' até a próxima importação.">
+    <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="btn danger sm" type="submit">Remover lançamento e parcelas</button></form>
+  {% endif %}
+</section>
 {% endblock %}

@@ -7,6 +7,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     LargeBinary,
@@ -14,7 +15,13 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    deferred,
+    mapped_column,
+    relationship,
+)
 
 
 def utcnow() -> datetime:
@@ -61,6 +68,23 @@ class Note(Base):
     pdf_data = deferred(mapped_column(LargeBinary))  # só é lido quando alguém abre/baixa o PDF
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    # conciliação com o contas a pagar do ERP (preenchido pela importação do arquivo de conciliação)
+    data_lancamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    situacao: Mapped[str] = mapped_column(String(16), default="sem_lancamento", index=True)
+    nominal_cents: Mapped[int] = mapped_column(BigInteger, default=0)  # soma das parcelas no ERP
+    pago_cents: Mapped[int] = mapped_column(BigInteger, default=0)
+    ultimo_pagamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    proximo_vencimento: Mapped[date | None] = mapped_column(Date, nullable=True)  # da 1ª parcela ainda não paga
+    conciliado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    conciliacao_obs: Mapped[str] = mapped_column(String(300), default="")
+
+    titulos: Mapped[list["Titulo"]] = relationship(back_populates="note", cascade="all, delete-orphan",
+                                                    order_by="Titulo.vencimento", lazy="selectin")
+
+    @property
+    def aberto_cents(self) -> int:
+        return max((self.nominal_cents or self.valor_cents) - (self.pago_cents or 0), 0) if self.situacao != "sem_lancamento" else 0
 
     @property
     def label(self) -> str:
@@ -110,3 +134,41 @@ class Device(Base):
     os: Mapped[str] = mapped_column(String(30), default="")
     kind: Mapped[str] = mapped_column(String(15), default="")  # Celular | Tablet | Computador
     model: Mapped[str] = mapped_column(String(40), default="")  # só quando o navegador informa (Chrome no Android)
+
+
+class Titulo(Base):
+    """Uma parcela da nota no contas a pagar do ERP (TÍTULO "número/série-parcela")."""
+
+    __tablename__ = "titulos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    note_id: Mapped[int] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"), index=True)
+    titulo: Mapped[str] = mapped_column(String(40), default="")
+    parcela: Mapped[int] = mapped_column(Integer, default=1)
+    vencimento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    data_pagamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valor_nominal_cents: Mapped[int] = mapped_column(BigInteger, default=0)
+    valor_pago_cents: Mapped[int] = mapped_column(BigInteger, default=0)
+    especie: Mapped[str] = mapped_column(String(20), default="")
+
+    note: Mapped[Note] = relationship(back_populates="titulos")
+
+    @property
+    def pago(self) -> bool:
+        return self.valor_pago_cents > 0 and self.valor_pago_cents >= self.valor_nominal_cents
+
+
+class ErpOrfao(Base):
+    """Título do ERP sem PDF correspondente no sistema (substituído a cada importação)."""
+
+    __tablename__ = "erp_orfaos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fornecedor: Mapped[str] = mapped_column(String(300), default="")
+    cnpj: Mapped[str] = mapped_column(String(20), default="")
+    titulo: Mapped[str] = mapped_column(String(40), default="")
+    data_emissao: Mapped[date | None] = mapped_column(Date, nullable=True)
+    vencimento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    data_pagamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valor_cents: Mapped[int] = mapped_column(BigInteger, default=0)
+    motivo: Mapped[str] = mapped_column(String(200), default="")

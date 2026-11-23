@@ -1,9 +1,7 @@
 """Lançamento (com bloqueio de duplicidade), filtros, totais, CSV e PDF único."""
 from __future__ import annotations
 
-import csv
 import hashlib
-import io
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
@@ -90,7 +88,10 @@ ORDENS = {
     "valor_desc": (Note.valor_cents.desc(), Note.id.desc()),
     "valor_asc": (Note.valor_cents.asc(), Note.id.asc()),
     "fornecedor": (func.lower(Note.emit_nome).asc(), Note.data_emissao.desc()),
+    "pagamento": (Note.ultimo_pagamento.desc().nulls_last(), Note.id.desc()),
+    "vencimento": (Note.proximo_vencimento.asc().nulls_last(), Note.id.asc()),
 }
+SITUACAO_FILTRO = ("paga", "parcial", "a_pagar", "sem_lancamento", "em_aberto")
 
 
 def _date(s: str | None) -> date | None:
@@ -123,6 +124,7 @@ class Filters:
     ate: date | None = None
     vmin: int | None = None
     vmax: int | None = None
+    situacao: str = ""
     ordem: str = "data_desc"
     raw: dict[str, str] = field(default_factory=dict)
 
@@ -132,11 +134,12 @@ class Filters:
         f = cls(q=g("q")[:100], kind=g("tipo") if g("tipo") in ("nfse", "danfe") else "",
                 fornecedor=g("fornecedor")[:20], categoria=g("categoria")[:60],
                 de=_date(g("de")), ate=_date(g("ate")), vmin=_money(g("vmin")), vmax=_money(g("vmax")),
+                situacao=g("situacao") if g("situacao") in SITUACAO_FILTRO else "",
                 ordem=g("ordem") if g("ordem") in ORDENS else "data_desc")
         f.raw = {k: v for k, v in {
             "q": f.q, "tipo": f.kind, "fornecedor": f.fornecedor, "categoria": f.categoria,
             "de": f.de.isoformat() if f.de else "", "ate": f.ate.isoformat() if f.ate else "",
-            "vmin": g("vmin") if f.vmin is not None else "", "vmax": g("vmax") if f.vmax is not None else "",
+            "vmin": g("vmin") if f.vmin is not None else "", "vmax": g("vmax") if f.vmax is not None else "", "situacao": f.situacao,
             "ordem": f.ordem if f.ordem != "data_desc" else ""}.items() if v}
         return f
 
@@ -165,6 +168,10 @@ class Filters:
             w.append(Note.valor_cents >= self.vmin)
         if self.vmax is not None:
             w.append(Note.valor_cents <= self.vmax)
+        if self.situacao == "em_aberto":
+            w.append(Note.situacao.in_(("a_pagar", "parcial")))
+        elif self.situacao:
+            w.append(Note.situacao == self.situacao)
         return w
 
 
@@ -184,6 +191,13 @@ class Stats:
     top: list[dict] = field(default_factory=list)
     by_kind: dict[str, int] = field(default_factory=dict)
     view: tuple[int, int] = (560, 150)
+    pago: int = 0
+    aberto: int = 0
+    sem_lanc: int = 0
+    n_pagas: int = 0
+    n_aberto: int = 0
+    n_sem_lanc: int = 0
+    proximo: object = None  # data do próximo vencimento em aberto
 
     @property
     def media(self) -> int:
@@ -192,11 +206,22 @@ class Stats:
 
 def compute_stats(db: Session, f: Filters) -> Stats:
     rows = db.execute(select(Note.data_emissao, Note.valor_cents, Note.desconto_cents, Note.emit_doc, Note.emit_nome,
-                             Note.kind).where(*f.where())).all()
+                             Note.kind, Note.situacao, Note.nominal_cents, Note.pago_cents, Note.proximo_vencimento)
+                      .where(*f.where())).all()
     st = Stats(count=len(rows))
     by_month: dict[tuple[int, int], int] = defaultdict(int)
     by_forn: dict[str, list] = {}
-    for d, v, desc, doc, nome, kind in rows:
+    for d, v, desc, doc, nome, kind, sit, nominal, pago, prox in rows:
+        if sit == "sem_lancamento":
+            st.sem_lanc += v
+            st.n_sem_lanc += 1
+        else:
+            st.pago += pago or 0
+            st.aberto += max((nominal or v) - (pago or 0), 0)
+            st.n_pagas += sit == "paga"
+            st.n_aberto += sit in ("a_pagar", "parcial")
+            if prox and sit != "paga" and (st.proximo is None or prox < st.proximo):
+                st.proximo = prox
         st.total += v
         st.desconto += desc or 0
         st.maior = max(st.maior, v)
@@ -232,23 +257,3 @@ def filter_options(db: Session) -> tuple[list[tuple[str, str]], list[str]]:
                       .order_by(func.lower(func.max(Note.emit_nome)))).all()
     cats = db.scalars(select(Note.categoria).where(Note.categoria != "").distinct().order_by(Note.categoria)).all()
     return [(d, n) for d, n in forn], list(cats)
-
-
-# ---------------------------------------------------------------- exportação
-
-def _safe_cell(v: str) -> str:
-    return "'" + v if v[:1] in ("=", "+", "-", "@", "\t", "\r") else v
-
-
-def build_csv(notes: list[Note]) -> bytes:
-    buf = io.StringIO()
-    w = csv.writer(buf, delimiter=";")
-    w.writerow(["Tipo", "Número", "Série", "Emissão", "Vencimento", "Fornecedor", "CNPJ/CPF", "Tomador", "Descrição",
-                "Categoria", "Desconto", "Valor", "Chave de acesso"])
-    for n in notes:
-        money = lambda c: f"{c // 100}.{c % 100:02d}".replace(".", ",")  # noqa: E731
-        w.writerow([_safe_cell(x) for x in [
-            "NFS-e" if n.kind == "nfse" else "DANFE", n.numero, n.serie, n.data_emissao.strftime("%d/%m/%Y"),
-            n.vencimento.strftime("%d/%m/%Y") if n.vencimento else "", n.emit_nome, n.emit_doc, n.tom_nome,
-            n.descricao, n.categoria, money(n.desconto_cents or 0), money(n.valor_cents), n.chave]])
-    return ("﻿" + buf.getvalue()).encode("utf-8")

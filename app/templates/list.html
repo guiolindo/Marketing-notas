@@ -17,7 +17,10 @@
   <div class="actions head-actions">
     <a class="btn cta" href="{{ build_url('/baixar-tudo.pdf', f.raw) }}" {% if not stats.count %}aria-disabled="true" tabindex="-1"{% endif %}>
       {{ ico('files', 22) }}<span class="cta-txt">{{ 'Baixar filtradas em PDF' if f.active else 'Baixar tudo em PDF' }}</span>{% if stats.count %}<span class="pill">{{ stats.count }}</span>{% endif %}</a>
-    <a class="btn" href="{{ build_url('/exportar.csv', f.raw) }}">{{ ico('sheet') }}CSV</a>
+    <div class="exp-group" role="group" aria-label="Exportar planilha">
+      <a class="btn" href="{{ build_url('/exportar.xlsx', f.raw) }}" title="Planilha com notas, situação, datas e parcelas">{{ ico('sheet') }}Excel</a>
+      <a class="btn" href="{{ build_url('/exportar.csv', f.raw) }}" title="Mesmas colunas, em texto separado por ;">CSV</a>
+    </div>
   </div>
 </div>
 
@@ -35,7 +38,7 @@
     </div>
     <div class="row-custom">
       <div class="field"><label for="texto">Mensagem própria</label><input id="texto" name="texto" type="text" maxlength="{{ max_banner }}" value="{{ banner.text if banner and banner.preset == 'custom' }}" placeholder="Ex.: Notas de junho a caminho"></div>
-      <div class="field"><label for="tipo">Cor</label><select id="tipo" name="tipo">
+      <div class="field"><label for="aviso-tipo">Cor</label><select id="aviso-tipo" name="tipo">
         <option value="info" {{ 'selected' if not banner or banner.kind == 'info' }}>Azul (informação)</option>
         <option value="warn" {{ 'selected' if banner and banner.kind == 'warn' }}>Laranja (em andamento)</option>
         <option value="ok" {{ 'selected' if banner and banner.kind == 'ok' }}>Verde (tudo certo)</option></select></div>
@@ -92,6 +95,17 @@
   <div class="kpi alt"><div class="label">Maior nota</div><div class="value">{{ stats.maior|brl }}</div><div class="sub">maior valor individual</div></div>
 </section>
 
+{% if stats.n_pagas or stats.n_aberto %}
+<section class="status-strip" aria-label="Situação dos pagamentos">
+  <a class="st st-paga{{ ' on' if f.situacao == 'paga' }}" href="{{ build_url(base, f.raw, situacao='' if f.situacao == 'paga' else 'paga', p='') }}">
+    <span class="st-label">Pago</span><span class="st-value">{{ stats.pago|brl }}</span><span class="st-sub">{{ stats.n_pagas }} nota{{ 's' if stats.n_pagas != 1 }} quitada{{ 's' if stats.n_pagas != 1 }}</span></a>
+  <a class="st st-aberto{{ ' on' if f.situacao == 'em_aberto' }}" href="{{ build_url(base, f.raw, situacao='' if f.situacao == 'em_aberto' else 'em_aberto', p='') }}">
+    <span class="st-label">A pagar</span><span class="st-value">{{ stats.aberto|brl }}</span><span class="st-sub">{{ stats.n_aberto }} nota{{ 's' if stats.n_aberto != 1 }}{% if stats.proximo %} · próximo venc. {{ stats.proximo|dmy }}{% endif %}</span></a>
+  <a class="st st-sem{{ ' on' if f.situacao == 'sem_lancamento' }}" href="{{ build_url(base, f.raw, situacao='' if f.situacao == 'sem_lancamento' else 'sem_lancamento', p='') }}">
+    <span class="st-label">Sem lançamento</span><span class="st-value">{{ stats.sem_lanc|brl }}</span><span class="st-sub">{{ stats.n_sem_lanc }} nota{{ 's' if stats.n_sem_lanc != 1 }} fora do ERP</span></a>
+</section>
+{% endif %}
+
 {% if stats.count %}
 <section class="grid cols-main charts" aria-label="Gráficos">
   <div class="card">
@@ -129,8 +143,12 @@
         <option value="nfse" {{ 'selected' if f.kind == 'nfse' }}>NFS-e</option><option value="danfe" {{ 'selected' if f.kind == 'danfe' }}>DANFE</option></select></div>
     <div class="field"><label for="ordem">Ordenar por</label>
       <select id="ordem" name="ordem">
-        {% for k, t in [('data_desc', 'Mais recentes'), ('data_asc', 'Mais antigas'), ('valor_desc', 'Maior valor'), ('valor_asc', 'Menor valor'), ('fornecedor', 'Fornecedor (A–Z)')] %}
+        {% for k, t in [('data_desc', 'Mais recentes'), ('data_asc', 'Mais antigas'), ('valor_desc', 'Maior valor'), ('valor_asc', 'Menor valor'), ('fornecedor', 'Fornecedor (A–Z)'), ('pagamento', 'Pagamento mais recente'), ('vencimento', 'Vencimento mais próximo')] %}
         <option value="{{ k }}" {{ 'selected' if f.ordem == k }}>{{ t }}</option>{% endfor %}</select></div>
+    <div class="field wide"><label for="situacao">Situação</label>
+      <select id="situacao" name="situacao"><option value="">Todas</option>
+        {% for k, t in [('paga', 'Pagas'), ('em_aberto', 'Em aberto (a pagar ou em parte)'), ('a_pagar', 'A pagar'), ('parcial', 'Pagas em parte'), ('sem_lancamento', 'Sem lançamento no ERP')] %}
+        <option value="{{ k }}" {{ 'selected' if f.situacao == k }}>{{ t }}</option>{% endfor %}</select></div>
     <div class="field wide"><label for="fornecedor">Fornecedor</label>
       <select id="fornecedor" name="fornecedor"><option value="">Todos</option>
         {% for doc, nome in fornecedores %}<option value="{{ doc }}" {{ 'selected' if f.fornecedor == doc }}>{{ nome }}</option>{% endfor %}</select></div>
@@ -154,12 +172,17 @@
       <tbody>
       {% for n in notes %}
         <tr>
-          <td class="nowrap">{{ n.data_emissao|dmy }}{% if n.vencimento %}<div class="muted small">venc. {{ n.vencimento|dmy }}</div>{% endif %}</td>
+          <td class="nowrap">{{ n.data_emissao|dmy }}{% if n.data_lancamento %}<div class="muted small">lanç. {{ n.data_lancamento|dmy }}</div>{% elif n.vencimento %}<div class="muted small">venc. {{ n.vencimento|dmy }}</div>{% endif %}</td>
           <td>{{ kind_badge(n.kind) }}</td>
           <td class="nowrap mono">{{ n.numero }}</td>
           <td class="wrapcell"><div class="strong">{{ n.emit_nome }}</div><div class="muted small">{{ n.emit_doc }}</div></td>
           <td class="wrapcell desc"><div>{{ n.descricao }}</div>{% if n.categoria %}<span class="chip">{{ n.categoria }}</span>{% endif %}{% if n.obs %}<div class="muted small">{{ n.obs }}</div>{% endif %}</td>
-          <td class="num strong">{{ n.valor_cents|brl }}{% if n.desconto_cents %}<div class="muted small normal">desc. {{ n.desconto_cents|brl }}</div>{% endif %}</td>
+          <td class="num strong">{{ n.valor_cents|brl }}{% if n.desconto_cents %}<div class="muted small normal">desc. {{ n.desconto_cents|brl }}</div>{% endif %}
+            {% if n.situacao == 'paga' %}<div class="sit sit-paga" title="Quitada no ERP">{{ ico('check', 14) }}Paga{% if n.ultimo_pagamento %} · {{ n.ultimo_pagamento|dmy }}{% endif %}</div>
+            {% elif n.situacao == 'parcial' %}<div class="sit sit-parcial">Pago {{ n.pago_cents|brl }}{% if n.proximo_vencimento %} · venc. {{ n.proximo_vencimento|dmy }}{% endif %}</div>
+            {% elif n.situacao == 'a_pagar' %}<div class="sit sit-aberto">A pagar{% if n.proximo_vencimento %} · venc. {{ n.proximo_vencimento|dmy }}{% endif %}</div>
+            {% else %}<div class="sit sit-sem">Sem lançamento</div>{% endif %}
+            {% if n.titulos|length > 1 %}<div class="muted small normal">{{ n.titulos|length }} parcelas{% for t in n.titulos %}{% if t.pago %} ✓{% endif %}{% endfor %}</div>{% endif %}</td>
           <td class="act">
             <a class="iconbtn" href="/nota/{{ n.id }}.pdf" target="_blank" rel="noopener" title="Abrir PDF" aria-label="Abrir PDF da {{ n.label }}">{{ ico('eye', 17) }}</a>
             <a class="iconbtn" href="/nota/{{ n.id }}/baixar" title="Baixar PDF" aria-label="Baixar PDF da {{ n.label }}">{{ ico('download', 17) }}</a>
@@ -191,6 +214,30 @@
   </div>
   {% endif %}
 </section>
+
+{% if conc %}
+<section class="card concil" id="conciliacao" aria-labelledby="conc-h">
+  <div class="card-head"><h2 id="conc-h">Conciliação com o ERP (lançamento e pagamento)</h2>
+    <span class="muted small">{% if conc.last %}última: {{ conc.last|dthr }} · {% endif %}{{ conc.conciliadas }} de {{ conc.total }} notas no ERP</span></div>
+  <ol class="steps3">
+    <li><span class="sn">1</span><div><strong>Baixe os dados do sistema</strong><p class="muted small">Todas as notas, com id, chave e valores.</p>
+      <a class="btn" href="/admin/exportar-dados.xlsx">{{ ico('download', 16) }}Dados do sistema (.xlsx)</a></div></li>
+    <li><span class="sn">2</span><div><strong>Envie para o Claude</strong><p class="muted small">Esse arquivo e a planilha do contas a pagar do ERP. Ele devolve o arquivo de conciliação.</p></div></li>
+    <li><span class="sn">3</span><div><strong>Importe o arquivo de conciliação</strong><p class="muted small">Você confere tudo antes de aplicar.</p>
+      <form method="post" action="/admin/conciliacao" enctype="multipart/form-data" class="conc-form">
+        <input type="hidden" name="csrf" value="{{ csrf() }}">
+        <input type="file" name="arquivo" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required>
+        <button class="btn primary" type="submit">{{ ico('upload', 16) }}Conferir</button>
+      </form></div></li>
+  </ol>
+  {% if conc.orfaos %}
+  <details class="orfaos"><summary>{{ conc.orfaos|length }} título{{ 's' if conc.orfaos|length != 1 }} do ERP sem PDF no sistema</summary>
+    <ul>{% for o in conc.orfaos %}<li><span class="o-main"><strong>{{ o.fornecedor }}</strong> · título {{ o.titulo or '—' }}</span><span class="o-val">{{ o.valor_cents|brl }}</span>
+      <span class="muted small o-sub">emissão {{ o.data_emissao|dmy }}{% if o.data_pagamento %} · pago {{ o.data_pagamento|dmy }}{% endif %}{% if o.motivo %} · {{ o.motivo }}{% endif %}</span></li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
 
 {% if devices %}
 <section class="card devices" aria-labelledby="dev-h">

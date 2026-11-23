@@ -4,7 +4,7 @@ Sistema web para lançar **NFS-e** e **DANFE** (PDF), somar os valores e consult
 Qualquer pessoa com o link vê as notas, filtra, baixa uma nota ou **todas num PDF só**.
 Só o administrador (`/admin`) lança, classifica e exclui notas.
 
-Stack: FastAPI · SQLAlchemy 2 · Jinja2 · pypdf · PostgreSQL (Railway) / SQLite (dev).
+Stack: FastAPI · SQLAlchemy 2 · Jinja2 · pypdf · openpyxl · PostgreSQL (Railway) / SQLite (dev).
 O visual (tokens, tipografia, componentes, tela de acesso) vem do repositório `Agua-e-luz---economart`.
 
 ## Como funciona
@@ -28,6 +28,23 @@ visitantes, fica salvo no banco (sobrevive a deploys) e muda em até 15 segundos
 cookie próprio e só o *hash* dele é guardado. **Não** se grava IP, localização nem o texto bruto do navegador. Robôs,
 `/health`, estáticos, PDFs e erros não contam, nem quem envia o sinal `Sec-GPC`. O cartão também diz se o aparelho de quem
 está vendo foi contado e, se não, o motivo.
+
+**Lançamento e pagamento (conciliação com o ERP)**: cada nota pode ter parcelas (títulos do contas a pagar) com
+vencimento, data e valor pago. A situação aparece no site (Paga · Paga em parte · A pagar · Sem lançamento), com filtro,
+totais (Pago / A pagar / Sem lançamento) e nas exportações. O fluxo, em `/admin` → **Conciliação**:
+
+1. **Dados do sistema (.xlsx)**: exporta todas as notas (id, chave como texto, número, número curto, CNPJ, valores) e as
+   instruções do formato (aba LEIA-ME).
+2. Esse arquivo + a planilha do ERP vão para o Claude, que roda `scripts/conciliar.py` (CNPJ obrigatório; pontua valor,
+   emissão e número, inclusive número com zeros cortados e TÍTULO que o Excel transformou em data), revisa os casos
+   duvidosos e devolve o **arquivo de conciliação** (abas `conciliacao` e `sem_pdf`).
+3. **Importar** → tela de conferência (o que muda em cada nota, erros, avisos) → **Aplicar**. Erros bloqueiam a aplicação;
+   cada nota do arquivo tem as parcelas substituídas (reimportar não duplica). Títulos do ERP sem PDF no sistema ficam
+   listados no `/admin` para lançar os PDFs que faltam.
+
+**Exportações** (topo do site, respeitam os filtros): PDF único, **Excel** (.xlsx com abas Notas e Parcelas, chave e
+número como texto, datas e valores formatados, linha de total) e **CSV** (chave em grupos de 4 e número como `="…"`,
+para o Excel não cortar nem transformar em 2,02E+12).
 
 Layouts aceitos: **DANFSe nacional** (NFS-e) e **DANFE de NF-e modelo 55**. PDF escaneado (imagem), NFC-e e
 outros layouts são recusados com a mensagem do motivo, em vez de gravar um valor errado.

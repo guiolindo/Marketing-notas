@@ -1,0 +1,49 @@
+{%- from "macros.html" import ico -%}
+{% extends "base.html" %}
+{% block title %}Conferir conciliação · Notas do Marketing de Porto Seguro{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="crumbs"><a href="/admin#conciliacao">Conciliação</a> / Conferência</div><h1>Conferir antes de aplicar</h1>
+  <p class="muted small">{{ plan.filename }}</p></div></div>
+
+<section class="grid cols-4 kpis">
+  <div class="kpi"><div class="label">Notas que mudam</div><div class="value">{{ plan.notes|length }}</div><div class="sub">lançamento e parcelas</div></div>
+  <div class="kpi alt"><div class="label">Sem mudança</div><div class="value">{{ plan.unchanged }}</div><div class="sub">já estavam iguais</div></div>
+  <div class="kpi {{ 'bad' if plan.errors }}"><div class="label">Erros</div><div class="value">{{ plan.errors|length }}</div><div class="sub">{{ 'impedem a aplicação' if plan.errors else 'nenhum' }}</div></div>
+  <div class="kpi alt"><div class="label">Títulos sem PDF</div><div class="value">{{ plan.orphans|length if plan.orphans is not none else '—' }}</div><div class="sub">{{ 'substituem a lista atual' if plan.orphans is not none else 'arquivo sem a aba sem_pdf' }}</div></div>
+</section>
+
+{% if plan.errors %}
+<section class="card errbox-list">
+  <h2>Erros — corrija o arquivo e importe de novo</h2>
+  <ul>{% for e in plan.errors[:200] %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% if plan.errors|length > 200 %}<p class="muted small">… e mais {{ plan.errors|length - 200 }}.</p>{% endif %}
+</section>
+{% endif %}
+
+<div class="actions apply-bar">
+  {% if not plan.errors and (plan.notes or plan.orphans is not none) %}
+  <form method="post" action="/admin/conciliacao/aplicar"><input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="token" value="{{ token }}">
+    <button class="btn primary big" type="submit">{{ ico('check', 18) }}Aplicar {{ plan.notes|length }} {{ 'alteração' if plan.notes|length == 1 else 'alterações' }}</button></form>
+  {% endif %}
+  <a class="btn" href="/admin#conciliacao">Cancelar</a>
+</div>
+
+{% if plan.notes %}
+<section class="card flush">
+  <ul class="plan-list">
+  {% for n in plan.notes %}
+    <li>
+      <div class="pl-head"><span><strong>{{ n.fornecedor }}</strong> · {{ n.label }} · {{ n.valor_cents|brl }}</span>
+        <span class="pl-sit"><span class="sit sit-{{ {'paga':'paga','parcial':'parcial','a_pagar':'aberto','sem_lancamento':'sem'}[n.situacao_depois] }}">{{ {'paga':'Paga','parcial':'Paga em parte','a_pagar':'A pagar','sem_lancamento':'Sem lançamento'}[n.situacao_depois] }}</span>{% if n.confianca %}<span class="conf conf-{{ n.confianca|replace(' ', '') }}">confiança {{ n.confianca }}</span>{% endif %}</span></div>
+      <div class="pl-meta muted small">Lançamento: {{ n.lanc_antes|dmy }} → <strong>{{ n.lanc_depois|dmy }}</strong> · parcelas: {{ n.titulos_antes }} → <strong>{{ n.titulos|length }}</strong>{% if n.titulos %} · pago {{ n.pago_depois|brl }} de {{ n.nominal_depois|brl }}{% endif %}</div>
+      {% if n.titulos %}<ul class="pl-tit">{% for t in n.titulos %}<li>{{ t.titulo or ('parcela ' ~ t.parcela) }} · venc. {{ t.vencimento|dmy }} · {{ t.valor_nominal_cents|brl }} · {% if t.valor_pago_cents %}<span class="ok-txt">pago {{ t.data_pagamento|dmy }}</span>{% else %}em aberto{% endif %}</li>{% endfor %}</ul>{% endif %}
+      {% if n.obs %}<div class="muted small">{{ n.obs }}</div>{% endif %}
+      {% for a in n.avisos %}<div class="warn-txt small">⚠ {{ a }}</div>{% endfor %}
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+{% elif not plan.errors %}
+<div class="empty card"><h2>Nada para mudar</h2><p class="muted">Todas as notas do arquivo já estão iguais no sistema.</p></div>
+{% endif %}
+{% endblock %}

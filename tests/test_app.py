@@ -202,8 +202,13 @@ def test_single_pdf_view_and_download(loaded):
 
 def test_csv_export(loaded):
     r = loaded.get("/exportar.csv")
-    assert r.status_code == 200 and r.text.startswith("﻿Tipo;")
-    assert len(r.text.strip().splitlines()) == 4 and "1400,00" in r.text
+    assert r.status_code == 200 and r.text.startswith("\ufeffSituação;Tipo;Número")
+    lines = r.text.strip().splitlines()
+    assert len(lines) == 4 and "1400,00" in r.text
+    assert '"=""2"""' in r.text  # número como texto no Excel (="2" com aspas escapadas do CSV)
+    from tests.helpers import nfe_key
+    k = nfe_key(numero=2)
+    assert " ".join(k[i:i + 4] for i in range(0, 44, 4)) in r.text  # chave inteira, em grupos de 4
 
 
 def test_csv_neutralizes_formulas(loaded):

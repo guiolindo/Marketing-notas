@@ -10,3 +10,5 @@ pypdf>=5.0
 fonttools>=4.50
 cryptography>=42
 tzdata>=2024.1
+openpyxl>=3.1
+defusedxml>=0.7  # openpyxl usa automaticamente: bloqueia XML malicioso (XXE/bomba) nas planilhas importadas

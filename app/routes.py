@@ -12,11 +12,11 @@ from fastapi.responses import (
     RedirectResponse,
     Response,
 )
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import AuditLog, Note
+from app.models import AuditLog, ErpOrfao, Note
 from app.security import (
     NeedsAdmin,
     NeedsViewer,
@@ -30,17 +30,24 @@ from app.security import (
     session_roles,
     verify_csrf,
 )
+from app.services.conciliacao import (
+    ImportError_,
+    apply_plan,
+    build_plan,
+    clear_note,
+    read_file,
+)
 from app.services.devices import DeviceTracker, self_status
 from app.services.merge import MergeError, merge_key, merge_pdfs
 from app.services.notes import (
     Filters,
     brl,
-    build_csv,
     compute_stats,
     filter_options,
     ingest,
     query_notes,
 )
+from app.services.sheets import build_csv, build_system_export, build_xlsx
 from app.services.site import MAX_TEXT, PRESETS, build_banner
 from app.web import render
 
@@ -100,7 +107,15 @@ def list_view(request: Request, db: Session, admin: bool, results=None):
                   me=self_status(db, request.cookies.get("nm_dev" if request.app.state.settings.debug else "__Host-nm_dev", ""),
                                  request.headers.get("user-agent", ""), request.headers.get("sec-gpc") == "1") if admin else None, presets=PRESETS, max_banner=MAX_TEXT, max_mb=request.app.state.settings.max_upload_mb,
                   max_files=request.app.state.settings.max_files_per_upload,
-                  recent=db.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(12)).all() if admin else [])
+                  recent=db.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(12)).all() if admin else [],
+                  conc=_conciliation_info(db) if admin else None)
+
+
+def _conciliation_info(db: Session) -> dict:
+    last = db.scalar(select(func.max(Note.conciliado_em)))
+    return {"last": last, "conciliadas": db.scalar(select(func.count()).select_from(Note).where(Note.situacao != "sem_lancamento")),
+            "total": db.scalar(select(func.count()).select_from(Note)),
+            "orfaos": db.scalars(select(ErpOrfao).order_by(ErpOrfao.data_emissao.desc().nulls_last())).all()}
 
 
 @router.get("/")
@@ -206,12 +221,24 @@ def download_all(request: Request, db: Session = Depends(get_db), _=Depends(requ
         "Content-Encoding": "identity"})  # PDF já é comprimido: evita gastar CPU com gzip
 
 
+def _export_notes(request: Request, db: Session) -> list[Note]:
+    _heavy_guard(request)
+    return list(db.scalars(query_notes(Filters.from_params(request.query_params)).limit(20000)).all())
+
+
 @router.get("/exportar.csv")
 def export_csv(request: Request, db: Session = Depends(get_db), _=Depends(require_viewer)):
-    _heavy_guard(request)
-    notes = db.scalars(query_notes(Filters.from_params(request.query_params)).limit(20000)).all()
-    return Response(build_csv(list(notes)), media_type="text/csv; charset=utf-8", headers={
+    return Response(build_csv(_export_notes(request, db)), media_type="text/csv; charset=utf-8", headers={
         "Content-Disposition": f'attachment; filename="notas-{date.today():%Y-%m-%d}.csv"'})
+
+
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@router.get("/exportar.xlsx")
+def export_xlsx(request: Request, db: Session = Depends(get_db), _=Depends(require_viewer)):
+    return Response(build_xlsx(_export_notes(request, db)), media_type=XLSX, headers={
+        "Content-Disposition": f'attachment; filename="notas-{date.today():%Y-%m-%d}.xlsx"'})
 
 
 # ---------------------------------------------------------------- administrador
@@ -329,3 +356,62 @@ def admin_banner(request: Request, preset: str = Form("", max_length=20), texto:
     audit(db, request, request.app.state.settings, "aviso", banner.text[:80] if banner else "desligado")
     _flash(request, "ok", "Aviso do site atualizado." if banner else "Aviso do site desligado.")
     return RedirectResponse("/admin", status_code=303)
+
+
+# ---------------------------------------------------------------- conciliação com o ERP (admin)
+
+@router.get("/admin/exportar-dados.xlsx")
+def admin_export_data(request: Request, db: Session = Depends(get_db), _=Depends(require_admin)):
+    notes = list(db.scalars(select(Note).order_by(Note.data_emissao, Note.id)).all())
+    audit(db, request, request.app.state.settings, "exportou_dados", f"{len(notes)} notas")
+    return Response(build_system_export(notes), media_type=XLSX, headers={
+        "Content-Disposition": f'attachment; filename="dados-sistema-notas-{date.today():%Y-%m-%d}.xlsx"'})
+
+
+@router.post("/admin/conciliacao")
+def admin_conciliation_preview(request: Request, arquivo: UploadFile = File(...), csrf: str = Form(""),
+                               db: Session = Depends(get_db), _=Depends(require_admin)):
+    from app.services.conciliacao import MAX_BYTES
+    _post_guard(request, csrf)
+    data = arquivo.file.read(MAX_BYTES + 1)
+    try:
+        rows, orphans = read_file(data, arquivo.filename or "")
+    except ImportError_ as exc:
+        _flash(request, "error", str(exc))
+        return RedirectResponse("/admin#conciliacao", status_code=303)
+    if not rows:
+        _flash(request, "error", "O arquivo não tem linhas de conciliação.")
+        return RedirectResponse("/admin#conciliacao", status_code=303)
+    plan = build_plan(db, rows, orphans, filename=(arquivo.filename or "")[:120])
+    token = request.app.state.pending_imports.put(plan)
+    return render(request, "conciliacao.html", plan=plan, token=token)
+
+
+@router.post("/admin/conciliacao/aplicar")
+def admin_conciliation_apply(request: Request, token: str = Form("", max_length=100), csrf: str = Form(""),
+                             db: Session = Depends(get_db), _=Depends(require_admin)):
+    _post_guard(request, csrf)
+    plan = request.app.state.pending_imports.pop(token)
+    if plan is None:
+        _flash(request, "error", "A conferência expirou (30 min). Importe o arquivo de novo.")
+        return RedirectResponse("/admin#conciliacao", status_code=303)
+    if plan.errors:
+        _flash(request, "error", "O arquivo tem erros. Corrija e importe de novo.")
+        return RedirectResponse("/admin#conciliacao", status_code=303)
+    n = apply_plan(db, plan)
+    request.app.state.merge_cache = type(request.app.state.merge_cache)(request.app.state.merge_cache.max_bytes)
+    orf = f", {len(plan.orphans)} título(s) do ERP sem PDF" if plan.orphans is not None else ""
+    audit(db, request, request.app.state.settings, "conciliacao", f"{n} nota(s) atualizada(s){orf} · {plan.filename}")
+    _flash(request, "ok", f"Conciliação aplicada: {n} nota(s) atualizada(s){orf}.")
+    return RedirectResponse("/admin#conciliacao", status_code=303)
+
+
+@router.post("/admin/nota/{note_id}/limpar-conciliacao")
+def admin_clear_conciliation(note_id: int, request: Request, csrf: str = Form(""), db: Session = Depends(get_db),
+                             _=Depends(require_admin)):
+    _post_guard(request, csrf)
+    note = _get_note(db, note_id)
+    clear_note(db, note)
+    audit(db, request, request.app.state.settings, "limpou_conciliacao", note.label)
+    _flash(request, "ok", f"Lançamento e pagamentos de {note.label} removidos.")
+    return RedirectResponse(f"/admin/nota/{note_id}", status_code=303)

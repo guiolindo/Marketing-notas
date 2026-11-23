@@ -25,6 +25,7 @@ from app.security import (
     RateLimiter,
     apply_security_headers,
 )
+from app.services.conciliacao import PendingImports
 from app.services.devices import COOKIE_RE, DeviceTracker, new_visitor_id
 from app.services.merge import MergeCache
 from app.services.site import BannerStore
@@ -42,6 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.SessionLocal = init_db(engine)
+    app.state.pending_imports = PendingImports()
     app.state.devices = DeviceTracker(app.state.SessionLocal)
     app.state.banner = BannerStore(app.state.SessionLocal)
     app.state.vault = Vault(settings.document_encryption_key)
