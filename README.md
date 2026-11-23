@@ -15,7 +15,7 @@ O visual (tokens, tipografia, componentes, tela de acesso) vem do repositório `
 3. O PDF original fica guardado no banco. A página inicial soma o valor, mostra os totais por mês e por
    fornecedor e permite filtrar por texto, tipo, fornecedor, categoria, período e faixa de valor.
 4. **Baixar tudo em PDF** (botão no topo) junta os PDFs em um só, em ordem de emissão, com um marcador por nota.
-   O botão respeita os filtros ativos: filtrou um fornecedor, baixa só as notas dele. Há também exportação CSV.
+   O botão respeita os filtros ativos: filtrou um fornecedor, baixa só as notas dele. Há também a planilha Excel.
 
 **Aviso no topo do site**: em `/admin` → "Aviso no topo do site" o administrador escolhe uma mensagem pronta
 ("Estamos procurando as notas e colocando para download", "Todas as notas estão disponíveis", "Novas notas estão sendo
@@ -42,9 +42,8 @@ totais (Pago / A pagar / Sem lançamento) e nas exportações. O fluxo, em `/adm
    cada nota do arquivo tem as parcelas substituídas (reimportar não duplica). Títulos do ERP sem PDF no sistema ficam
    listados no `/admin` para lançar os PDFs que faltam.
 
-**Exportações** (topo do site, respeitam os filtros): PDF único, **Excel** (.xlsx com abas Notas e Parcelas, chave e
-número como texto, datas e valores formatados, linha de total) e **CSV** (chave em grupos de 4 e número como `="…"`,
-para o Excel não cortar nem transformar em 2,02E+12).
+**Exportações** (topo do site, respeitam os filtros): PDF único e **planilha Excel** (.xlsx com abas Notas e Parcelas,
+chave e número como texto, datas e valores formatados, linha de total; texto nunca vira fórmula).
 
 Layouts aceitos: **DANFSe nacional** (NFS-e) e **DANFE de NF-e modelo 55**. PDF escaneado (imagem), NFC-e e
 outros layouts são recusados com a mensagem do motivo, em vez de gravar um valor errado.
@@ -90,7 +89,7 @@ As tabelas são criadas na primeira subida. O disco do Railway não persiste ent
 | `MAX_UPLOAD_MB` / `MAX_FILES_PER_UPLOAD` | não | 10 MB / 200 arquivos por requisição (o navegador envia em lotes de 10, sem limite de quantidade) |
 | `MAX_MERGED_PAGES` | não | teto de páginas do PDF único (2500) |
 | `MERGE_CONCURRENCY` | não | PDFs únicos gerados ao mesmo tempo (2) |
-| `MERGE_RATE_PER_MINUTE` | não | downloads pesados (PDF único/CSV) por IP por minuto (6) |
+| `MERGE_RATE_PER_MINUTE` | não | downloads pesados (PDF único/planilha) por IP por minuto (6) |
 | `MERGE_CACHE_MB` | não | cache em memória dos PDFs únicos já gerados (64; 0 desliga) |
 | `TRUSTED_PROXY_COUNT` | não | proxies na frente do app (Railway = 1) |
 | `DEBUG` | não | `true` só em desenvolvimento |
@@ -114,11 +113,11 @@ Técnicas adaptadas do `notas-despesas` (teto de páginas, falha explícita, lim
   em vez de entregar um pacote cortado em silêncio.
 - **Falha explícita**: se algum PDF guardado não puder ser juntado, o download falha dizendo qual nota. Pacote incompleto
   de nota fiscal passaria por completo.
-- **Rotas caras protegidas**: PDF único e CSV são públicos, então têm limite por IP (429) e no máximo
+- **Rotas caras protegidas**: PDF único e planilha são públicos, então têm limite por IP (429) e no máximo
   `MERGE_CONCURRENCY` gerações simultâneas (503 + nova tentativa), para ninguém esgotar a memória do servidor.
 - **PDF menor quando possível**: fontes e imagens idênticas repetidas entre notas são unificadas. Se a otimização
   falhar, o PDF sai sem ela.
-- **HTTP**: gzip para HTML/CSS/JS/CSV (PDFs não, já são comprimidos); CSS/JS com versão por **hash do conteúdo** e
+- **HTTP**: gzip para HTML/CSS/JS (PDFs não, já são comprimidos); CSS/JS com versão por **hash do conteúdo** e
   cache de 1 ano (`immutable`); fontes imutáveis.
 - **Banco**: o PDF fica numa coluna carregada sob demanda; listar, filtrar e somar nunca lê os arquivos.
 
@@ -133,8 +132,8 @@ Técnicas adaptadas do `notas-despesas` (teto de páginas, falha explícita, lim
   senha e PDF com JavaScript, anexos, ações de abertura ou lançamento de programas. No PDF único, anotações/links dos
   originais são removidos.
 - **Cabeçalhos**: CSP sem `unsafe-inline`, `X-Frame-Options: DENY`, `nosniff`, HSTS, `noindex` + `robots.txt`.
-- **Banco**: consultas parametrizadas (SQLAlchemy), busca com escape de `%`/`_`, ordenação por lista fixa, CSV com
-  neutralização de fórmulas (`=`, `+`, `-`, `@`). Textos vindos do PDF são escapados na tela.
+- **Banco**: consultas parametrizadas (SQLAlchemy), busca com escape de `%`/`_`, ordenação por lista fixa; na planilha Excel
+  nenhum texto vira fórmula (ex.: `=HYPERLINK(...)` sai como texto). Textos vindos do PDF são escapados na tela.
 - **Auditoria**: logins, falhas, envios, edições e exclusões (com IP) aparecem em "Atividade recente" no `/admin`.
 - **Sem dependência externa em tempo de execução**: fontes e gráficos são servidos pelo próprio sistema, sem CDN.
 
@@ -165,7 +164,7 @@ app/
   routes.py        páginas públicas e /admin
   security.py      sessão, login, trava, CSRF, cabeçalhos
   parsing.py       leitura do PDF (NFS-e / DANFE) e validação do arquivo
-  services/notes.py lançamento + duplicidade, filtros, totais, CSV, PDF único
+  services/notes.py lançamento + duplicidade, filtros, totais
   models.py        Note, LoginAttempt, AuditLog
   templates/ static/
 ```

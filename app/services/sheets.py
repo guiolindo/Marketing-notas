@@ -1,7 +1,6 @@
-"""Exportações: planilha Excel (.xlsx), CSV e o arquivo de dados para a conciliação (admin)."""
+"""Exportações: planilha Excel (.xlsx) e o arquivo de dados para a conciliação (admin)."""
 from __future__ import annotations
 
-import csv
 import io
 import re
 from datetime import date
@@ -49,10 +48,20 @@ def _fit(ws, widths: dict[int, int]) -> None:
         ws.column_dimensions[get_column_letter(c)].width = w
 
 
+def _no_formula(ws) -> None:
+    """Texto que começa com = vira fórmula no openpyxl: um nome de fornecedor ou categoria "=HYPERLINK(...)" viraria
+    fórmula ativa na planilha. Força todas as células de texto a serem texto."""
+    for row in ws.iter_rows(min_row=2):
+        for cell in row:
+            if cell.data_type == "f":
+                cell.data_type = "s"
+
+
 def _write(ws, headers: list[str], rows: list[list], formats: dict[int, str], widths: dict[int, int]) -> None:
     ws.append(headers)
     for r in rows:
         ws.append(r)
+    _no_formula(ws)
     for c, fmt in formats.items():
         for row in ws.iter_rows(min_row=2, min_col=c, max_col=c):
             for cell in row:
@@ -111,33 +120,6 @@ def build_xlsx(notes: list[Note]) -> bytes:
                 "Pago", "Situação", "Chave de acesso"], prow, {2: "@", 5: "@", 7: DATE, 8: DATE, 9: MONEY, 10: MONEY, 12: "@"},
            {1: 8, 2: 16, 3: 38, 4: 20, 5: 16, 6: 8, 7: 12, 8: 12, 9: 14, 10: 14, 11: 18, 12: 60})
     return _to_bytes(wb)
-
-
-# ---------------------------------------------------------------- CSV
-
-def _safe_cell(v: str) -> str:
-    return "'" + v if v[:1] in ("=", "+", "-", "@", "\t", "\r") else v
-
-
-def _as_text(digits: str) -> str:
-    """Número grande no CSV: ="..." faz o Excel manter como texto (sem 2,02E+12 nem zeros perdidos)."""
-    return f'="{digits}"' if digits.isdigit() else _safe_cell(digits)
-
-
-def build_csv(notes: list[Note]) -> bytes:
-    buf = io.StringIO()
-    w = csv.writer(buf, delimiter=";")
-    w.writerow(NOTE_HEADERS)
-    money = lambda c: f"{(c or 0) / 100:.2f}".replace(".", ",")  # noqa: E731
-    dmy = lambda d: d.strftime("%d/%m/%Y") if d else ""  # noqa: E731
-    for n in notes:
-        cells = [SITUACOES.get(n.situacao, ""), tipo(n), None, n.serie, n.emit_nome, n.emit_doc, dmy(n.data_emissao),
-                 dmy(n.data_lancamento), dmy(n.proximo_vencimento), dmy(n.ultimo_pagamento), money(n.valor_cents),
-                 money(n.pago_cents), money(n.aberto_cents), str(len(n.titulos)), n.descricao, n.categoria, None]
-        row = [_safe_cell(str(c)) if c is not None else "" for c in cells]
-        row[2], row[16] = _as_text(n.numero), chave_formatada(n.chave)
-        w.writerow(row)
-    return ("﻿" + buf.getvalue()).encode("utf-8")
 
 
 # ---------------------------------------------------------------- dados para a conciliação (admin)

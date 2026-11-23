@@ -54,7 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     if not app.state.admin_auth.enabled:
         log.warning("ADMIN_PASSWORD não definida: o login de administrador está desligado.")
 
-    app.add_middleware(GZipMiddleware, minimum_size=1024)  # HTML/CSS/JS/CSV; PDFs saem com Content-Encoding: identity
+    app.add_middleware(GZipMiddleware, minimum_size=1024)  # HTML/CSS/JS; PDFs saem com Content-Encoding: identity
     app.add_middleware(
         SessionMiddleware, secret_key=settings.secret_key or secrets.token_hex(32),
         session_cookie="nm_session" if settings.debug else "__Host-nm_session",
@@ -88,7 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """Conta o aparelho (anônimo, sem IP) quando ele abre uma página. Respeita o sinal Sec-GPC (o antigo DNT foi descontinuado)."""
         path = request.url.path
         if (request.method != "GET" or response.status_code != 200 or path.startswith(("/static/", "/nota/"))
-                or path in ("/health", "/robots.txt", "/baixar-tudo.pdf", "/exportar.csv")
+                or path in ("/health", "/robots.txt", "/baixar-tudo.pdf", "/exportar.xlsx")
                 or "text/html" not in response.headers.get("content-type", "")
                 or request.headers.get("sec-gpc") == "1"):
             return

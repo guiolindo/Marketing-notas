@@ -160,7 +160,7 @@ def test_edit_category(admin):
     assert "campanha &lt;b&gt;x&lt;/b&gt;" in r.text
 
 
-# ---------------------------------------------------------------- filtros, PDF único, CSV
+# ---------------------------------------------------------------- filtros, PDF único, planilha
 
 @pytest.fixture
 def loaded(admin):
@@ -200,20 +200,16 @@ def test_single_pdf_view_and_download(loaded):
     assert loaded.get("/nota/999.pdf").status_code == 404
 
 
-def test_csv_export(loaded):
-    r = loaded.get("/exportar.csv")
-    assert r.status_code == 200 and r.text.startswith("\ufeffSituação;Tipo;Número")
-    lines = r.text.strip().splitlines()
-    assert len(lines) == 4 and "1400,00" in r.text
-    assert '"=""2"""' in r.text  # número como texto no Excel (="2" com aspas escapadas do CSV)
-    from tests.helpers import nfe_key
-    k = nfe_key(numero=2)
-    assert " ".join(k[i:i + 4] for i in range(0, 44, 4)) in r.text  # chave inteira, em grupos de 4
+def test_xlsx_text_never_becomes_formula(loaded):
+    import io
 
-
-def test_csv_neutralizes_formulas(loaded):
-    loaded.post("/admin/nota/1", data={"csrf": loaded.csrf, "categoria": "=HYPERLINK(\"x\")", "obs": ""})
-    assert "'=HYPERLINK" in loaded.get("/exportar.csv").text
+    from openpyxl import load_workbook
+    loaded.post("/admin/nota/1", data={"csrf": loaded.csrf, "categoria": '=HYPERLINK("http://x","clique")', "obs": ""})
+    ws = load_workbook(io.BytesIO(loaded.get("/exportar.xlsx").content))["Notas"]
+    cats = [ws.cell(row=i, column=16) for i in range(2, 5)]
+    cell = next(c for c in cats if c.value and str(c.value).startswith("=HYPERLINK"))
+    assert cell.data_type == "s"  # texto, não fórmula
+    assert loaded.get("/exportar.csv").status_code == 404  # só existe a planilha Excel
 
 
 def test_encrypted_storage(tmp_path):

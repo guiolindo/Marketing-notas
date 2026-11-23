@@ -47,7 +47,7 @@ from app.services.notes import (
     ingest,
     query_notes,
 )
-from app.services.sheets import build_csv, build_system_export, build_xlsx
+from app.services.sheets import build_system_export, build_xlsx
 from app.services.site import MAX_TEXT, PRESETS, build_banner
 from app.web import render
 
@@ -224,12 +224,6 @@ def download_all(request: Request, db: Session = Depends(get_db), _=Depends(requ
 def _export_notes(request: Request, db: Session) -> list[Note]:
     _heavy_guard(request)
     return list(db.scalars(query_notes(Filters.from_params(request.query_params)).limit(20000)).all())
-
-
-@router.get("/exportar.csv")
-def export_csv(request: Request, db: Session = Depends(get_db), _=Depends(require_viewer)):
-    return Response(build_csv(_export_notes(request, db)), media_type="text/csv; charset=utf-8", headers={
-        "Content-Disposition": f'attachment; filename="notas-{date.today():%Y-%m-%d}.csv"'})
 
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

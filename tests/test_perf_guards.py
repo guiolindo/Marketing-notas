@@ -85,7 +85,7 @@ def test_concurrency_limit_returns_503(tmp_path):
 def test_heavy_routes_are_rate_limited_per_ip(tmp_path):
     with _client(tmp_path, merge_rate_per_minute=3) as c:
         _two_notes(c)
-        codes = [c.get("/baixar-tudo.pdf").status_code for _ in range(3)] + [c.get("/exportar.csv").status_code]
+        codes = [c.get("/baixar-tudo.pdf").status_code for _ in range(3)] + [c.get("/exportar.xlsx").status_code]
         assert codes == [200, 200, 200, 429]
         assert c.get("/").status_code == 200  # a página comum não é afetada
 

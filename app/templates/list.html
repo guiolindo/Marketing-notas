@@ -17,10 +17,7 @@
   <div class="actions head-actions">
     <a class="btn cta" href="{{ build_url('/baixar-tudo.pdf', f.raw) }}" {% if not stats.count %}aria-disabled="true" tabindex="-1"{% endif %}>
       {{ ico('files', 22) }}<span class="cta-txt">{{ 'Baixar filtradas em PDF' if f.active else 'Baixar tudo em PDF' }}</span>{% if stats.count %}<span class="pill">{{ stats.count }}</span>{% endif %}</a>
-    <div class="exp-group" role="group" aria-label="Exportar planilha">
-      <a class="btn" href="{{ build_url('/exportar.xlsx', f.raw) }}" title="Planilha com notas, situação, datas e parcelas">{{ ico('sheet') }}Excel</a>
-      <a class="btn" href="{{ build_url('/exportar.csv', f.raw) }}" title="Mesmas colunas, em texto separado por ;">CSV</a>
-    </div>
+    <a class="btn xls" href="{{ build_url('/exportar.xlsx', f.raw) }}" title="Notas, situação, datas e parcelas">{{ ico('sheet') }}Planilha Excel</a>
   </div>
 </div>
 
