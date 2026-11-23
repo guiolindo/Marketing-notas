@@ -7,7 +7,7 @@ Uso:  python -I scripts/conciliar.py dados-sistema.xlsx contas-a-pagar.xlsx -o c
 
 Casamento (por documento do ERP = mesmo CNPJ + número + série, somando as parcelas):
   CNPJ igual é obrigatório; depois pontua  valor total (3) · data de emissão (3) · número (3, ou 2 se só "parecido":
-  zeros cortados, só o fim, ano na frente). alta = 9, média >= 6. O resto vai para a aba "revisar" (conferência manual).
+  zeros cortados, só o fim, ano com 2 ou 4 dígitos). alta >= 8 (os quatro critérios), média >= 6. O resto vai para a aba "revisar" (conferência manual).
 Títulos que o Excel transformou em data (3082/1-1 -> 01/01/3082) são reconstruídos como ANO/MÊS-DIA.
 O arquivo gerado é revisado por quem roda o script antes de ir para o sistema.
 """
@@ -55,8 +55,10 @@ def digits(v) -> str:
 
 def parse_titulo(v) -> tuple[str, str, int, bool]:
     """(numero, serie, parcela, era_data). '316/1-1' -> ('316','1',1); '2026145/-1' -> ('2026145','',1)."""
-    if isinstance(v, (datetime, date)):  # Excel leu "3082/1-1" como 01/01/3082
-        return str(v.year), str(v.month), v.day, True
+    if isinstance(v, (datetime, date)):
+        if v.year > 2100:  # Excel leu "3082/1-1" como 01/01/3082: ANO/MÊS-DIA = número/série-parcela
+            return str(v.year), str(v.month), v.day, True
+        return "", f"{v:%d/%m/%Y}", 0, True  # 08/02/2001: data "real", número e parcela irrecuperáveis
     s = str(v or "").strip()
     m = re.fullmatch(r"(\d+)\s*/\s*(\d*)\s*-\s*(\d+)", s)
     if m:
@@ -68,6 +70,10 @@ def parse_titulo(v) -> tuple[str, str, int, bool]:
 def numero_score(erp: str, sist: str, curto: str) -> tuple[int, str]:
     if not erp:
         return 0, ""
+    if len(sist) == 13 and re.fullmatch(r"2[0-9][01]\d{10}", sist) and not sist.startswith("20"):
+        best = numero_score(erp, "20" + sist, curto)  # ano com 2 dígitos no sistema, 4 no ERP
+        if best[0]:
+            return best
     if erp in (sist.lstrip("0"), curto):
         return 3, "número igual"
     z = lambda x: x.replace("0", "")  # noqa: E731
@@ -114,7 +120,8 @@ def read_erp(path: str) -> list[Doc]:
         em = d(r[c["emissao"]])
         key = (cnpj, num, serie, em)
         doc = docs.setdefault(key, Doc(str(r[c["pessoa"]] or ""), cnpj, num, serie, em, d(r[c["lanc"]]), era))
-        doc.parcelas.append({"titulo": f"{num}/{serie}-{parc}", "parcela": parc, "venc": d(r[c["venc"]]),
+        titulo_txt = f"{num}/{serie}-{parc}" if num else f"{serie} (virou data no Excel)"
+        doc.parcelas.append({"titulo": titulo_txt, "parcela": parc or len(doc.parcelas) + 1, "venc": d(r[c["venc"]]),
                              "quit": d(r[c["quit"]]), "nominal": cents(r[c["nominal"]]), "pago": cents(r[c["pago"]]),
                              "especie": str(r[c["especie"]] or ""), "original": r[c["titulo"]]})
     return list(docs.values())
@@ -172,7 +179,7 @@ def main() -> int:
                "valor_nominal", "valor_pago", "especie", "confianca", "observacao"])
     for di, (nid, pts, why) in sorted(match.items(), key=lambda x: x[1][0]):
         doc, n = docs[di], by_id[nid]
-        conf = "alta" if pts >= 9 else "media"
+        conf = "alta" if pts >= 8 else "media"
         obs = "casado por " + " + ".join(why) + (f"; título era data no Excel ({doc.parcelas[0]['original']:%d/%m/%Y})"
                                                   if doc.era_data else "")
         for p in sorted(doc.parcelas, key=lambda p: p["parcela"]):
@@ -211,7 +218,7 @@ def main() -> int:
             c.font, c.fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1B4F8A")
     wb.save(a.out)
 
-    alta = sum(1 for v in match.values() if v[1] >= 9)
+    alta = sum(1 for v in match.values() if v[1] >= 8)
     print(f"ERP: {len(docs)} documentos ({sum(len(x.parcelas) for x in docs)} títulos) · sistema: {len(notes)} notas")
     print(f"casados: {len(match)} (alta {alta}, média {len(match) - alta}) · ERP sem PDF: {len(docs) - len(match)} documentos"
           f" · revisar: {rv.max_row - 1} · sistema sem ERP: {ns.max_row - 1}")

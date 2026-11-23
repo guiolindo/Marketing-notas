@@ -141,13 +141,25 @@ def clean(text: str, limit: int = 300) -> str:
     return _CTRL.sub(" ", re.sub(r"\s+", " ", text or "")).strip()[:limit]
 
 
-_SENSITIVE = re.compile(r"\b(dados\s+banc[aá]rios|banco|ag[eê]ncia|conta\s+corrente|conta\s+poupan[cç]a|c/c|pix|chave\s+pix|titular|cpf)\b", re.I)
+# Onde começam os dados de pagamento que prestadores escrevem na descrição do serviço (vistos em notas reais).
+# Sem \b no início de propósito: o texto do PDF às vezes vem colado ("BOLETO BANCÁRIODADOS BANCÁRIOS").
+_SENSITIVE = re.compile(
+    r"dados\s*(?:banc[aá]rios?|para\s+(?:o\s+)?(?:pagam\w*|dep[oó]sito|cr[eé]dito)|de\s+pagamento)"
+    r"|conta\s+(?:para|de)\s+cr[eé]dito"
+    r"|pagamento\s+via\s+boleto|dep[oó]sito\s+(?:na|em)\s+conta|dep[oó]sito\s+banc[aá]rio"
+    r"|\bconta\s*(?:corrente|poupan[cç]a)?\s*[:nº.]\s*\d|\bconta\s+(?:corrente|poupan[cç]a)\b"
+    r"|\bag(?:[eê]ncia|encia|enci)?\s*[:.]?\s*\d|\bc/?c\b\s*[:.]?\s*\d|\bc/c\b"
+    r"|\bbanco\b|\bchave\s+pix\b|\bpix\b|\btitular\b|\bfavorecido\b|\bcpf\b",
+    re.I)
+_TAIL = re.compile(r"(?:[\s.;:,\-–—(]|\bobs\b)+$", re.I)
 
 
 def cut_sensitive(text: str) -> str:
     """Prestadores escrevem agência, conta e Pix no campo do serviço. A descrição pára antes disso: vai para a tela."""
-    m = _SENSITIVE.search(text)
-    return text[: m.start()].strip(" .;:-–—,") if m else text
+    m = _SENSITIVE.search(text or "")
+    if not m:
+        return text
+    return _TAIL.sub("", text[: m.start()]).strip()
 
 
 def clean_name(text: str) -> str:

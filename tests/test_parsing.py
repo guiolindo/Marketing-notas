@@ -96,3 +96,27 @@ def test_bank_data_in_service_description_is_cut():
 @pytest.mark.parametrize("raw,cents", [("1.300,00", 130000), ("0,05", 5), ("12.345.678,90", 1234567890)])
 def test_parse_money(raw, cents):
     assert parse_money(raw) == cents
+
+
+@pytest.mark.parametrize("raw,expected", [
+    # padrões vistos em notas reais (números trocados por fictícios)
+    ("Panfletagem em Porto Seguro. CONTA PARA CRÉDITO Banco: NuBank Agência: 0001", "Panfletagem em Porto Seguro"),
+    ("Outdoor 30 dias. Valor líquido: R$ 1.250,00 Dados para pagamento: Ag: 0001 Conta: 11111111-1",
+     "Outdoor 30 dias. Valor líquido: R$ 1.250,00"),
+    ("INSERÇÃO DE MATERIAL PUBLICITÁRIO PAGAMENTO VIA BOLETO BANCÁRIO OU DEPÓSITO NA CONTA: AG: 0001",
+     "INSERÇÃO DE MATERIAL PUBLICITÁRIO"),
+    ("EVENTO: INAUGURAÇÃO BOLETO BANCÁRIODADOS BANCÁRIOS: CAIXA ECONÔMICA AG 9999", "EVENTO: INAUGURAÇÃO BOLETO BANCÁRIO"),
+    ("Decoração em balões. loja Porto Seguro obs: Dados para o pagamneto", "Decoração em balões. loja Porto Seguro"),
+    ("TENDA 5x5. DADOS PARA PAGAMENTO CNPJ - PIX: 00000000000000 FAVORECIDO: X C/C 99999- 6", "TENDA 5x5"),
+    ("Mídia no aeroporto. VENCIMENTO: 22/06/2026 Dados para deposito", "Mídia no aeroporto. VENCIMENTO: 22/06/2026"),
+    ("Captação de imagens. PIX:00.000.000/0001-00 FULANO.Banco: Mercado Pago", "Captação de imagens"),
+    ("Montagem de evento Dados para pagamento Empresa X CPF 000.000.000-00 Banco Y", "Montagem de evento"),
+    ("VALOR ENTRADA SERVIÇOS DE COMUNICAÇÃO VISUAL. BANCO ITAU AGENCI 9999 C/C 99999-", "VALOR ENTRADA SERVIÇOS DE COMUNICAÇÃO VISUAL"),
+    # não corta o que é só serviço
+    ("Veiculação em agosto 2026, 54 inserções", "Veiculação em agosto 2026, 54 inserções"),
+    ("Impressão. Valor aprox. trib. Lei 12.741-2012: R$ 386,40", "Impressão. Valor aprox. trib. Lei 12.741-2012: R$ 386,40"),
+    ("Agenciamento de mídia regional", "Agenciamento de mídia regional"),
+])
+def test_cut_sensitive_real_world_patterns(raw, expected):
+    from app.parsing import cut_sensitive
+    assert cut_sensitive(raw) == expected

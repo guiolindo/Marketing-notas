@@ -256,3 +256,18 @@ def test_http_is_redirected_to_https(client):
     assert r.status_code == 308 and r.headers["location"] == "https://testserver/admin/login?x=1"
     assert client.get("/health", headers={"x-forwarded-proto": "http"}).status_code == 200  # healthcheck do Railway
     assert client.get("/", headers={"x-forwarded-proto": "https"}).status_code == 200
+
+
+def test_existing_descriptions_with_bank_data_are_cleaned_on_startup(tmp_path):
+    """Notas lançadas antes do filtro: a descrição é limpa na subida seguinte (o PDF original não muda)."""
+    from sqlalchemy import text as sql
+    s = make_settings(tmp_path)
+    _reset_external_db(s)
+    with TestClient(create_app(s), base_url="https://testserver") as c:
+        upload(c, login(c), ("a.pdf", danfe_pdf()))
+        with c.app.state.engine.begin() as conn:
+            conn.execute(sql("update notes set descricao = 'Outdoor 30 dias Dados para pagamento: Ag: 0001 Conta: 1111-1'"))
+    with TestClient(create_app(s), base_url="https://testserver") as c2:
+        html = c2.get("/").text
+        assert "Outdoor 30 dias" in html and "1111-1" not in html and "Ag: 0001" not in html
+        assert c2.get("/nota/1.pdf").content.startswith(b"%PDF-")

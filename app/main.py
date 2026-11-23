@@ -15,7 +15,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import Settings, get_settings
 from app.crypto import Vault
-from app.database import init_db, make_engine
+from app.database import init_db, make_engine, sanitize_descriptions
 from app.routes import router
 from app.security import (
     AdminAuth,
@@ -43,6 +43,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.SessionLocal = init_db(engine)
+    cleaned = sanitize_descriptions(app.state.SessionLocal)
+    if cleaned:
+        log.warning("Dados bancários removidos da descrição de %d nota(s).", cleaned)
     app.state.pending_imports = PendingImports()
     app.state.devices = DeviceTracker(app.state.SessionLocal)
     app.state.banner = BannerStore(app.state.SessionLocal)

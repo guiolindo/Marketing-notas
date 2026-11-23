@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import Request
-from sqlalchemy import create_engine, event, inspect, text
+from sqlalchemy import create_engine, event, inspect, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -61,3 +61,19 @@ def get_db(request: Request):
         yield db
     finally:
         db.close()
+
+
+def sanitize_descriptions(session_factory: sessionmaker[Session]) -> int:
+    """Notas lançadas antes do filtro atual podem ter agência/conta/Pix na descrição: limpa no banco."""
+    from app.models import Note
+    from app.parsing import cut_sensitive
+    changed = 0
+    with session_factory() as db:
+        for nid, desc in db.execute(select(Note.id, Note.descricao)).all():
+            clean = cut_sensitive(desc or "")
+            if clean != (desc or ""):
+                db.get(Note, nid).descricao = clean or "Serviço prestado"
+                changed += 1
+        if changed:
+            db.commit()
+    return changed

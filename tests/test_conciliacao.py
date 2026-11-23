@@ -246,3 +246,16 @@ def test_parcels_with_same_number_are_one_note():
     assert parse_titulo("20264/-1")[:3] == ("20264", "", 1) and parse_titulo("20264/-2")[:3] == ("20264", "", 2)
     assert parse_titulo("1226/1-2")[:3] == ("1226", "1", 2)
     assert parse_titulo(datetime(3558, 1, 2)) == ("3558", "1", 2, True)  # Excel leu 3558/1-2 como data
+
+
+def test_script_number_rules():
+    import sys
+    sys.path.insert(0, "scripts")
+    from conciliar import numero_score, parse_titulo
+    assert numero_score("2026134", "2610000000034", "2610000000034")[0] == 2   # ano 26 no sistema, 2026 no ERP
+    assert numero_score("20261109", "2610000000109", "2610000000109")[0] == 2
+    assert numero_score("2026183", "2026100000083", "83")[0] == 2               # zeros cortados
+    assert numero_score("316", "316", "316")[0] == 3
+    assert numero_score("53", "41", "41")[0] == 0
+    num, serie, parc, era = parse_titulo(datetime(2001, 2, 8))                 # data "real": não inventa parcela 8
+    assert (num, parc, era) == ("", 0, True) and serie == "08/02/2001"
