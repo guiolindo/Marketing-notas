@@ -226,3 +226,23 @@ def test_new_columns_are_added_to_existing_notes_table(tmp_path):
     assert {"data_lancamento", "situacao", "pago_cents", "conciliado_em"} <= cols
     with eng.connect() as conn:
         assert conn.execute(text("select situacao from notes")).scalar() == "sem_lancamento"
+
+
+def test_sem_lancamento_card_only_when_there_are_unreconciled_notes(two):
+    rows = good_rows()
+    apply(two, preview(two, xlsx(rows[:1])).text)  # só a DANFE conciliada
+    home = two.get("/").text
+    assert 'class="st st-sem' in home and "1 nota ainda não conciliada" in home
+    apply(two, preview(two, xlsx(rows)).text)  # todas conciliadas
+    home = two.get("/").text
+    assert 'class="st st-sem' not in home and 'class="status-strip two"' in home
+
+
+def test_parcels_with_same_number_are_one_note():
+    """Mesmo número/série no ERP = mesma nota; o que vem depois do último traço é a parcela."""
+    import sys
+    sys.path.insert(0, "scripts")
+    from conciliar import parse_titulo
+    assert parse_titulo("20264/-1")[:3] == ("20264", "", 1) and parse_titulo("20264/-2")[:3] == ("20264", "", 2)
+    assert parse_titulo("1226/1-2")[:3] == ("1226", "1", 2)
+    assert parse_titulo(datetime(3558, 1, 2)) == ("3558", "1", 2, True)  # Excel leu 3558/1-2 como data

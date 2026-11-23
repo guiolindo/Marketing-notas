@@ -96,13 +96,15 @@
 </section>
 
 {% if stats.n_pagas or stats.n_aberto %}
-<section class="status-strip" aria-label="Situação dos pagamentos">
+<section class="status-strip{{ '' if stats.n_sem_lanc else ' two' }}" aria-label="Situação dos pagamentos">
   <a class="st st-paga{{ ' on' if f.situacao == 'paga' }}" href="{{ build_url(base, f.raw, situacao='' if f.situacao == 'paga' else 'paga', p='') }}">
     <span class="st-label">Pago</span><span class="st-value">{{ stats.pago|brl }}</span><span class="st-sub">{{ stats.n_pagas }} nota{{ 's' if stats.n_pagas != 1 }} quitada{{ 's' if stats.n_pagas != 1 }}</span></a>
   <a class="st st-aberto{{ ' on' if f.situacao == 'em_aberto' }}" href="{{ build_url(base, f.raw, situacao='' if f.situacao == 'em_aberto' else 'em_aberto', p='') }}">
     <span class="st-label">A pagar</span><span class="st-value">{{ stats.aberto|brl }}</span><span class="st-sub">{{ stats.n_aberto }} nota{{ 's' if stats.n_aberto != 1 }}{% if stats.proximo %} · próximo venc. {{ stats.proximo|dmy }}{% endif %}</span></a>
+  {% if stats.n_sem_lanc %}
   <a class="st st-sem{{ ' on' if f.situacao == 'sem_lancamento' }}" href="{{ build_url(base, f.raw, situacao='' if f.situacao == 'sem_lancamento' else 'sem_lancamento', p='') }}">
-    <span class="st-label">Sem lançamento</span><span class="st-value">{{ stats.sem_lanc|brl }}</span><span class="st-sub">{{ stats.n_sem_lanc }} nota{{ 's' if stats.n_sem_lanc != 1 }} fora do ERP</span></a>
+    <span class="st-label">Sem lançamento</span><span class="st-value">{{ stats.sem_lanc|brl }}</span><span class="st-sub">{{ stats.n_sem_lanc }} nota{{ 's' if stats.n_sem_lanc != 1 }} ainda não conciliada{{ 's' if stats.n_sem_lanc != 1 }}</span></a>
+  {% endif %}
 </section>
 {% endif %}
 
@@ -147,7 +149,7 @@
         <option value="{{ k }}" {{ 'selected' if f.ordem == k }}>{{ t }}</option>{% endfor %}</select></div>
     <div class="field wide"><label for="situacao">Situação</label>
       <select id="situacao" name="situacao"><option value="">Todas</option>
-        {% for k, t in [('paga', 'Pagas'), ('em_aberto', 'Em aberto (a pagar ou em parte)'), ('a_pagar', 'A pagar'), ('parcial', 'Pagas em parte'), ('sem_lancamento', 'Sem lançamento no ERP')] %}
+        {% for k, t in [('paga', 'Pagas'), ('em_aberto', 'Em aberto (a pagar ou em parte)'), ('a_pagar', 'A pagar'), ('parcial', 'Pagas em parte'), ('sem_lancamento', 'Ainda não conciliadas')] %}
         <option value="{{ k }}" {{ 'selected' if f.situacao == k }}>{{ t }}</option>{% endfor %}</select></div>
     <div class="field wide"><label for="fornecedor">Fornecedor</label>
       <select id="fornecedor" name="fornecedor"><option value="">Todos</option>
