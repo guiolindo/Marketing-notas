@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Mapping
 
@@ -16,6 +16,8 @@ from app.crypto import Vault
 from app.models import Note
 from app.parsing import ParseError, PdfRejected, parse_pdf
 
+MESES_NOME = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+              "novembro", "dezembro"]
 MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
 
@@ -210,6 +212,7 @@ def compute_stats(db: Session, f: Filters) -> Stats:
                       .where(*f.where())).all()
     st = Stats(count=len(rows))
     by_month: dict[tuple[int, int], int] = defaultdict(int)
+    by_month_n: dict[tuple[int, int], int] = defaultdict(int)
     by_forn: dict[str, list] = {}
     for d, v, desc, doc, nome, kind, sit, nominal, pago, prox in rows:
         if sit == "sem_lancamento":
@@ -226,6 +229,7 @@ def compute_stats(db: Session, f: Filters) -> Stats:
         st.desconto += desc or 0
         st.maior = max(st.maior, v)
         by_month[(d.year, d.month)] += v
+        by_month_n[(d.year, d.month)] += 1
         by_forn.setdefault(doc, [nome, 0, 0])
         by_forn[doc][1] += v
         by_forn[doc][2] += 1
@@ -241,7 +245,9 @@ def compute_stats(db: Session, f: Filters) -> Stats:
         h = max(3, round((H - 22) * v / top_m)) if v else 0
         st.months.append({"x": round(i * slot + (slot - bw) / 2, 1), "w": round(bw, 1), "h": h, "y": H - 18 - h,
                           "cx": round(i * slot + slot / 2, 1), "label": f"{MESES[m - 1]}/{str(y)[2:]}",
-                          "value": brl(v), "last": i == n - 1})
+                          "value": brl(v), "last": i == n - 1, "n": by_month_n[(y, m)],
+                          "nome": f"{MESES_NOME[m - 1].capitalize()} de {y}", "de": date(y, m, 1).isoformat(),
+                          "ate": (date(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1)).isoformat()})
     st.view = (W, H)
 
     ranked = sorted(by_forn.items(), key=lambda kv: kv[1][1], reverse=True)[:6]

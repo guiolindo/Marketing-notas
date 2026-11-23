@@ -1,0 +1,73 @@
+{%- from "macros.html" import ico, kind_badge -%}
+{% extends "base.html" %}
+{% block title %}{{ note.label }} · {{ note.emit_nome }} · Notas do Marketing de Porto Seguro{% endblock %}
+{% block content %}
+{% set sit = {'paga': ('paga', 'Paga'), 'parcial': ('parcial', 'Paga em parte'), 'a_pagar': ('aberto', 'A pagar'), 'sem_lancamento': ('sem', 'Sem lançamento')}[note.situacao] %}
+<a class="back" href="{{ voltar }}">← Voltar às notas</a>
+
+<section class="nd-head card">
+  <div class="nd-top">
+    <div class="nd-id">{{ kind_badge(note.kind) }}<span class="muted">nº {{ note.numero }}{% if note.serie %} · série {{ note.serie }}{% endif %}</span></div>
+    <span class="sit sit-{{ sit[0] }} big">{% if note.situacao == 'paga' %}{{ ico('check', 15) }}{% endif %}{{ sit[1] }}</span>
+  </div>
+  <h1>{{ note.emit_nome }}</h1>
+  <p class="muted nd-doc">{{ note.emit_doc }}</p>
+  <div class="nd-valor">{{ note.valor_cents|brl }}</div>
+  {% if note.situacao != 'sem_lancamento' %}
+  <div class="nd-prog" role="img" aria-label="Pago {{ note.pago_cents|brl }} de {{ (note.nominal_cents or note.valor_cents)|brl }}">
+    {% set tot = note.nominal_cents or note.valor_cents %}{% set pct = ((note.pago_cents or 0) * 100 / tot)|round(0)|int if tot else 0 %}
+    <svg viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect class="pg-bg" width="100" height="8" rx="4"/><rect class="pg-fg" width="{{ [pct, 100]|min }}" height="8" rx="4"/></svg>
+    <span class="small">Pago <strong>{{ note.pago_cents|brl }}</strong>{% if note.aberto_cents %} · em aberto <strong>{{ note.aberto_cents|brl }}</strong>{% endif %}</span>
+  </div>
+  {% endif %}
+  <div class="actions nd-actions">
+    <a class="btn primary" href="/nota/{{ note.id }}.pdf" target="_blank" rel="noopener">{{ ico('eye', 16) }}Ver PDF</a>
+    <a class="btn" href="/nota/{{ note.id }}/baixar">{{ ico('download', 16) }}Baixar PDF</a>
+    {% if is_admin %}<a class="btn" href="/admin/nota/{{ note.id }}">{{ ico('edit', 16) }}Editar</a>{% endif %}
+  </div>
+</section>
+
+<div class="grid cols-2 nd-grid">
+  <section class="card">
+    <h2>Datas</h2>
+    <ol class="timeline">
+      <li class="done"><span class="tl-k">Emissão</span><span class="tl-v">{{ note.data_emissao|dmy }}</span></li>
+      <li class="{{ 'done' if note.data_lancamento }}"><span class="tl-k">Lançamento no ERP</span><span class="tl-v">{{ note.data_lancamento|dmy if note.data_lancamento else 'ainda não' }}</span></li>
+      {% if note.proximo_vencimento %}<li class="due"><span class="tl-k">Próximo vencimento</span><span class="tl-v">{{ note.proximo_vencimento|dmy }}</span></li>{% endif %}
+      <li class="{{ 'done' if note.situacao == 'paga' }}"><span class="tl-k">{{ 'Pagamento' if note.situacao == 'paga' else 'Último pagamento' }}</span><span class="tl-v">{{ note.ultimo_pagamento|dmy if note.ultimo_pagamento else 'ainda não' }}</span></li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>Parcelas{% if note.titulos %} <span class="muted small">({{ note.titulos|length }})</span>{% endif %}</h2>
+    {% if note.titulos %}
+    <ul class="parcelas">
+      {% for t in note.titulos %}
+      <li class="{{ 'pago' if t.pago }}">
+        <div class="pc-top"><strong>{{ t.titulo or ('Parcela ' ~ t.parcela) }}</strong><span class="pc-val">{{ t.valor_nominal_cents|brl }}</span></div>
+        <div class="small muted">vencimento {{ t.vencimento|dmy }}</div>
+        <div class="small">{% if t.pago %}<span class="ok-txt">{{ ico('check', 13) }} pago em {{ t.data_pagamento|dmy }}</span>{% elif t.valor_pago_cents %}pago {{ t.valor_pago_cents|brl }} em {{ t.data_pagamento|dmy }}{% elif t.data_pagamento %}<span class="warn-txt">pagamento previsto {{ t.data_pagamento|dmy }}</span>{% else %}<span class="warn-txt">em aberto</span>{% endif %}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Ainda não conciliada com o contas a pagar do ERP.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <h2>Detalhes</h2>
+  <dl class="facts">
+    <dt>Descrição</dt><dd>{{ note.descricao }}</dd>
+    {% if note.categoria %}<dt>Categoria</dt><dd><span class="chip">{{ note.categoria }}</span></dd>{% endif %}
+    {% if note.obs %}<dt>Observação</dt><dd>{{ note.obs }}</dd>{% endif %}
+    <dt>Valor</dt><dd>{{ note.valor_cents|brl }}{% if note.desconto_cents %} <span class="muted small">(desconto {{ note.desconto_cents|brl }})</span>{% endif %}</dd>
+    {% if note.vencimento %}<dt>Vencimento no PDF</dt><dd>{{ note.vencimento|dmy }}</dd>{% endif %}
+    <dt>Tomador</dt><dd>{{ note.tom_nome|doc }}{% if note.tom_doc %}<br><span class="muted small">{{ note.tom_doc }}</span>{% endif %}</dd>
+    <dt>Chave de acesso</dt><dd class="chave-row"><span class="mono chave" id="chave">{{ note.chave|chave }}</span>
+      <button class="btn sm" type="button" data-copy="{{ note.chave }}">Copiar</button></dd>
+    {% if note.conciliacao_obs and is_admin %}<dt>Conciliação</dt><dd class="small muted">{{ note.conciliacao_obs }}</dd>{% endif %}
+  </dl>
+</section>
+{% endblock %}

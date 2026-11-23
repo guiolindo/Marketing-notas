@@ -1,0 +1,24 @@
+{%- from "macros.html" import ico, kind_badge -%}
+        <tr data-href="/nota/{{ n.id }}">
+          <td class="nowrap">{{ n.data_emissao|dmy }}{% if n.data_lancamento %}<div class="muted small">lanç. {{ n.data_lancamento|dmy }}</div>{% elif n.vencimento %}<div class="muted small">venc. {{ n.vencimento|dmy }}</div>{% endif %}</td>
+          <td>{{ kind_badge(n.kind) }}</td>
+          <td class="nowrap mono">{{ n.numero }}</td>
+          <td class="wrapcell"><a class="rowlink strong" href="/nota/{{ n.id }}">{{ n.emit_nome }}</a><div class="muted small">{{ n.emit_doc }}</div></td>
+          <td class="wrapcell desc"><div>{{ n.descricao }}</div>{% if n.categoria %}<span class="chip">{{ n.categoria }}</span>{% endif %}{% if n.obs %}<div class="muted small">{{ n.obs }}</div>{% endif %}</td>
+          <td class="num strong">{{ n.valor_cents|brl }}{% if n.desconto_cents %}<div class="muted small normal">desc. {{ n.desconto_cents|brl }}</div>{% endif %}
+            {% if n.situacao == 'paga' %}<div class="sit sit-paga" title="Quitada no ERP">{{ ico('check', 14) }}Paga{% if n.ultimo_pagamento %} · {{ n.ultimo_pagamento|dmy }}{% endif %}</div>
+            {% elif n.situacao == 'parcial' %}<div class="sit sit-parcial">Pago {{ n.pago_cents|brl }}{% if n.proximo_vencimento %} · venc. {{ n.proximo_vencimento|dmy }}{% endif %}</div>
+            {% elif n.situacao == 'a_pagar' %}<div class="sit sit-aberto">A pagar{% if n.proximo_vencimento %} · venc. {{ n.proximo_vencimento|dmy }}{% endif %}</div>
+            {% else %}<div class="sit sit-sem">Sem lançamento</div>{% endif %}
+            {% if n.titulos|length > 1 %}<div class="muted small normal">{{ n.titulos|length }} parcelas{% for t in n.titulos %}{% if t.pago %} ✓{% endif %}{% endfor %}</div>{% endif %}</td>
+          <td class="act">
+            <a class="iconbtn" href="/nota/{{ n.id }}.pdf" target="_blank" rel="noopener" title="Abrir PDF" aria-label="Abrir PDF da {{ n.label }}">{{ ico('eye', 17) }}</a>
+            <a class="iconbtn" href="/nota/{{ n.id }}/baixar" title="Baixar PDF" aria-label="Baixar PDF da {{ n.label }}">{{ ico('download', 17) }}</a>
+            {% if is_admin %}
+            <a class="iconbtn" href="/admin/nota/{{ n.id }}" title="Editar categoria" aria-label="Editar {{ n.label }}">{{ ico('edit', 17) }}</a>
+            <form class="inline" method="post" action="/admin/nota/{{ n.id }}/excluir" data-confirm="Excluir {{ n.label }} de {{ n.emit_nome }}? O PDF será apagado.">
+              <input type="hidden" name="csrf" value="{{ csrf() }}">
+              <button class="iconbtn danger" type="submit" title="Excluir" aria-label="Excluir {{ n.label }}">{{ ico('trash', 17) }}</button></form>
+            {% endif %}
+          </td>
+        </tr>

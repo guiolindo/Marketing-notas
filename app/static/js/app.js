@@ -39,6 +39,68 @@
   var txt = document.getElementById("texto");
   if (txt) txt.addEventListener("input", function () { var r = document.querySelector("input[name=preset][value=custom]"); if (r) r.checked = true; });
 
+  // Linha/cartão da nota: tocar em qualquer lugar abre a página da nota (menos nos botões)
+  document.addEventListener("click", function (e) {
+    var tr = e.target.closest && e.target.closest("tr[data-href]");
+    if (!tr || e.target.closest("a, button, form, input, select, label")) return;
+    if (window.getSelection && String(window.getSelection()).length) return;  // estava selecionando texto
+    if (e.ctrlKey || e.metaKey) window.open(tr.getAttribute("data-href")); else window.location.href = tr.getAttribute("data-href");
+  });
+
+  // "Mostrar mais": carrega a próxima página na mesma lista (e sozinho, ao chegar no fim)
+  var tbody = document.querySelector("tbody[data-more-url]"), moreBtn = document.querySelector("[data-more]");
+  if (tbody && moreBtn && window.fetch) {
+    var page = +tbody.getAttribute("data-page"), pages = +tbody.getAttribute("data-pages"), left = moreBtn.querySelector("[data-more-left]");
+    var pager = document.querySelector("[data-pager]"), loading = false;
+    moreBtn.hidden = false; if (pager) pager.hidden = true;
+    var loadMore = function () {
+      if (loading || page >= pages) return;
+      loading = true; moreBtn.setAttribute("aria-busy", "true");
+      fetch(tbody.getAttribute("data-more-url") + "&p=" + (page + 1), { credentials: "same-origin" })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+        .then(function (html) {
+          tbody.insertAdjacentHTML("beforeend", html); page += 1;
+          left.textContent = Math.max(0, +left.getAttribute("data-total") - tbody.querySelectorAll("tr").length);
+          if (page >= pages) moreBtn.parentNode.remove();
+        })
+        .catch(function () { if (pager) pager.hidden = false; moreBtn.parentNode.remove(); })
+        .then(function () { loading = false; moreBtn.removeAttribute("aria-busy"); });
+    };
+    moreBtn.addEventListener("click", loadMore);
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (es) { if (es[0].isIntersecting) loadMore(); }, { rootMargin: "300px" }).observe(moreBtn);
+    }
+  }
+
+  // Gráfico por mês: tocar/passar numa barra mostra mês, valor e quantidade na faixa acima do gráfico
+  document.querySelectorAll("[data-chart]").forEach(function (wrap) {
+    var info = wrap.querySelector("[data-tip]"), svg = wrap.querySelector("svg");
+    var show = function (hit) {
+      svg.querySelectorAll(".mbar.sel").forEach(function (r) { r.classList.remove("sel"); });
+      var bar = svg.querySelector('[data-barv="' + hit.getAttribute("data-bar") + '"]'); if (bar) bar.classList.add("sel");
+      info.querySelector("[data-tip-mes]").textContent = hit.getAttribute("data-mes");
+      info.querySelector("[data-tip-val]").textContent = hit.getAttribute("data-val");
+      var n = +hit.getAttribute("data-n"); info.querySelector("[data-tip-n]").textContent = n + (n === 1 ? " nota" : " notas");
+      info.querySelector("[data-tip-link]").href = hit.getAttribute("data-url");
+    };
+    svg.querySelectorAll(".mhit").forEach(function (hit) {
+      hit.addEventListener("mouseenter", function () { show(hit); });
+      hit.addEventListener("focus", function () { show(hit); });
+      hit.addEventListener("click", function () { show(hit); });
+      hit.addEventListener("keydown", function (e) { if (e.key === "Enter") window.location.href = hit.getAttribute("data-url"); });
+    });
+  });
+
+  // Copiar chave de acesso
+  document.querySelectorAll("[data-copy]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var done = function () { var t = b.textContent; b.textContent = "Copiada ✓"; setTimeout(function () { b.textContent = t; }, 1600); };
+      if (navigator.clipboard) navigator.clipboard.writeText(b.getAttribute("data-copy")).then(done); else {
+        var r = document.createRange(); r.selectNodeContents(document.getElementById("chave")); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand("copy"); done();
+      }
+    });
+  });
+
   // Mensagens de sucesso somem sozinhas
   document.querySelectorAll("[data-flash].ok").forEach(function (el) {
     setTimeout(function () { el.style.transition = "opacity .4s"; el.style.opacity = "0"; }, 5000);

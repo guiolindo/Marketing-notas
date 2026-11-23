@@ -108,14 +108,23 @@
 {% if stats.count %}
 <section class="grid cols-main charts" aria-label="Gráficos">
   <div class="card">
-    <div class="card-head"><h2>Valor por mês</h2><span class="muted small">por data de emissão</span></div>
-    <svg class="mchart" viewBox="0 0 {{ stats.view[0] }} {{ stats.view[1] }}" role="img" aria-label="Valor das notas por mês" preserveAspectRatio="xMidYMax meet">
+    <div class="card-head"><h2>Valor por mês</h2><span class="muted small">toque numa barra</span></div>
+    <div class="chart-wrap" data-chart>
+    {% set lm = stats.months[-1] %}
+    <div class="chart-info" data-tip role="status" aria-live="polite">
+      <span class="ci-mes" data-tip-mes>{{ lm.nome }}</span><span class="ci-val" data-tip-val>{{ lm.value }}</span>
+      <span class="ci-n" data-tip-n>{{ lm.n }} nota{{ 's' if lm.n != 1 }}</span><a class="ci-link" data-tip-link href="{{ build_url(base, f.raw, de=lm.de, ate=lm.ate, p='') }}">Ver notas do mês →</a>
+    </div>
+    <svg class="mchart" viewBox="0 0 {{ stats.view[0] }} {{ stats.view[1] }}" role="group" aria-label="Valor das notas por mês. Toque numa barra para ver o valor." preserveAspectRatio="xMidYMax meet">
       <line class="base" x1="0" x2="{{ stats.view[0] }}" y1="{{ stats.view[1] - 18 }}" y2="{{ stats.view[1] - 18 }}"/>
       {% for m in stats.months %}
-        <rect class="mbar{{ ' cur' if m.last }}" x="{{ m.x }}" y="{{ m.y }}" width="{{ m.w }}" height="{{ m.h }}" rx="4"><title>{{ m.label }}: {{ m.value }}</title></rect>
+        <rect class="mhit" x="{{ m.x - 6 }}" y="0" width="{{ m.w + 12 }}" height="{{ stats.view[1] - 18 }}" tabindex="0" role="button" aria-label="{{ m.nome }}: {{ m.value }}, {{ m.n }} nota{{ 's' if m.n != 1 }}"
+          data-mes="{{ m.nome }}" data-val="{{ m.value }}" data-n="{{ m.n }}" data-url="{{ build_url(base, f.raw, de=m.de, ate=m.ate, p='') }}" data-bar="{{ loop.index0 }}"/>
+        <rect class="mbar{{ ' cur sel' if m.last }}" data-barv="{{ loop.index0 }}" x="{{ m.x }}" y="{{ m.y }}" width="{{ m.w }}" height="{{ m.h }}" rx="4"><title>{{ m.label }}: {{ m.value }}</title></rect>
         <text class="mlab" x="{{ m.cx }}" y="{{ stats.view[1] - 3 }}" text-anchor="middle">{{ m.label }}</text>
       {% endfor %}
     </svg>
+    </div>
   </div>
   <div class="card">
     <div class="card-head"><h2>Por fornecedor</h2><span class="muted small">maiores valores</span></div>
@@ -168,38 +177,18 @@
   <div class="tablewrap">
     <table class="notes">
       <thead><tr><th>Emissão</th><th>Tipo</th><th>Nº</th><th>Fornecedor</th><th>Descrição</th><th class="num">Valor</th><th class="act"><span class="sr">Ações</span></th></tr></thead>
-      <tbody>
-      {% for n in notes %}
-        <tr>
-          <td class="nowrap">{{ n.data_emissao|dmy }}{% if n.data_lancamento %}<div class="muted small">lanç. {{ n.data_lancamento|dmy }}</div>{% elif n.vencimento %}<div class="muted small">venc. {{ n.vencimento|dmy }}</div>{% endif %}</td>
-          <td>{{ kind_badge(n.kind) }}</td>
-          <td class="nowrap mono">{{ n.numero }}</td>
-          <td class="wrapcell"><div class="strong">{{ n.emit_nome }}</div><div class="muted small">{{ n.emit_doc }}</div></td>
-          <td class="wrapcell desc"><div>{{ n.descricao }}</div>{% if n.categoria %}<span class="chip">{{ n.categoria }}</span>{% endif %}{% if n.obs %}<div class="muted small">{{ n.obs }}</div>{% endif %}</td>
-          <td class="num strong">{{ n.valor_cents|brl }}{% if n.desconto_cents %}<div class="muted small normal">desc. {{ n.desconto_cents|brl }}</div>{% endif %}
-            {% if n.situacao == 'paga' %}<div class="sit sit-paga" title="Quitada no ERP">{{ ico('check', 14) }}Paga{% if n.ultimo_pagamento %} · {{ n.ultimo_pagamento|dmy }}{% endif %}</div>
-            {% elif n.situacao == 'parcial' %}<div class="sit sit-parcial">Pago {{ n.pago_cents|brl }}{% if n.proximo_vencimento %} · venc. {{ n.proximo_vencimento|dmy }}{% endif %}</div>
-            {% elif n.situacao == 'a_pagar' %}<div class="sit sit-aberto">A pagar{% if n.proximo_vencimento %} · venc. {{ n.proximo_vencimento|dmy }}{% endif %}</div>
-            {% else %}<div class="sit sit-sem">Sem lançamento</div>{% endif %}
-            {% if n.titulos|length > 1 %}<div class="muted small normal">{{ n.titulos|length }} parcelas{% for t in n.titulos %}{% if t.pago %} ✓{% endif %}{% endfor %}</div>{% endif %}</td>
-          <td class="act">
-            <a class="iconbtn" href="/nota/{{ n.id }}.pdf" target="_blank" rel="noopener" title="Abrir PDF" aria-label="Abrir PDF da {{ n.label }}">{{ ico('eye', 17) }}</a>
-            <a class="iconbtn" href="/nota/{{ n.id }}/baixar" title="Baixar PDF" aria-label="Baixar PDF da {{ n.label }}">{{ ico('download', 17) }}</a>
-            {% if is_admin %}
-            <a class="iconbtn" href="/admin/nota/{{ n.id }}" title="Editar categoria" aria-label="Editar {{ n.label }}">{{ ico('edit', 17) }}</a>
-            <form class="inline" method="post" action="/admin/nota/{{ n.id }}/excluir" data-confirm="Excluir {{ n.label }} de {{ n.emit_nome }}? O PDF será apagado.">
-              <input type="hidden" name="csrf" value="{{ csrf() }}">
-              <button class="iconbtn danger" type="submit" title="Excluir" aria-label="Excluir {{ n.label }}">{{ ico('trash', 17) }}</button></form>
-            {% endif %}
-          </td>
-        </tr>
+      <tbody data-more-url="{{ build_url(base, f.raw, parcial='1') }}" data-page="{{ page }}" data-pages="{{ pages }}">
+      {% for n in notes %}{% include "_note_row.html" %}
       {% endfor %}
       </tbody>
       <tfoot><tr><td colspan="5">Total {{ 'filtrado' if f.active else 'geral' }} · {{ stats.count }} nota{{ 's' if stats.count != 1 }}</td><td class="num">{{ stats.total|brl }}</td><td></td></tr></tfoot>
     </table>
   </div>
+  {% if page < pages %}
+  <div class="more-wrap"><button class="btn more" type="button" data-more hidden>Mostrar mais (<span data-more-left data-total="{{ stats.count }}">{{ stats.count - page * per_page }}</span> restantes)</button></div>
+  {% endif %}
   {% if pages > 1 %}
-  <nav class="pager" aria-label="Páginas">
+  <nav class="pager" data-pager aria-label="Páginas">
     {% if page > 1 %}<a class="btn sm" href="{{ build_url(base, f.raw, p=page - 1) }}">← Anterior</a>{% endif %}
     <span class="muted small">Página {{ page }} de {{ pages }}</span>
     {% if page < pages %}<a class="btn sm" href="{{ build_url(base, f.raw, p=page + 1) }}">Próxima →</a>{% endif %}

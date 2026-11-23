@@ -52,7 +52,7 @@ from app.services.site import MAX_TEXT, PRESETS, build_banner
 from app.web import render
 
 router = APIRouter()
-PER_PAGE = 25
+PER_PAGE = 50
 _CTRL = re.compile(r"[\x00-\x1f\x7f]")
 
 
@@ -99,8 +99,10 @@ def list_view(request: Request, db: Session, admin: bool, results=None):
     pages = max(1, math.ceil(stats.count / PER_PAGE))
     page = min(page, pages)
     notes = db.scalars(query_notes(f).limit(PER_PAGE).offset((page - 1) * PER_PAGE)).all()
-    fornecedores, categorias = filter_options(db)
     base = "/admin" if admin else "/"
+    if request.query_params.get("parcial") == "1":  # "Mostrar mais": só as linhas da página pedida
+        return render(request, "_rows.html", notes=notes, base=base)
+    fornecedores, categorias = filter_options(db)
     return render(request, "list.html", f=f, stats=stats, notes=notes, page=page, pages=pages, base=base,
                   fornecedores=fornecedores, categorias=categorias, results=results, per_page=PER_PAGE,
                   devices=DeviceTracker.summary(db) if admin else None,
@@ -172,6 +174,17 @@ def _pdf_response(db: Session, request: Request, note: Note, disposition: str) -
 @router.get("/nota/{note_id}.pdf")
 def view_pdf(note_id: int, request: Request, db: Session = Depends(get_db), _=Depends(require_viewer)):
     return _pdf_response(db, request, _get_note(db, note_id), "inline")
+
+
+@router.get("/nota/{note_id:int}")
+def note_detail(note_id: int, request: Request, db: Session = Depends(get_db), _=Depends(require_viewer)):
+    note = _get_note(db, note_id)
+    admin, _v = session_roles(request, request.app.state.settings)
+    back = request.headers.get("referer", "")
+    from urllib.parse import urlsplit
+    ref = urlsplit(back)
+    voltar = (ref.path + ("?" + ref.query if ref.query else "")) if ref.netloc == request.headers.get("host") and ref.path in ("/", "/admin") else "/"
+    return render(request, "nota.html", note=note, voltar=voltar)
 
 
 @router.get("/nota/{note_id}/baixar")
