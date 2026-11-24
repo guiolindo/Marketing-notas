@@ -170,7 +170,8 @@ def test_clear_conciliation(two):
 def test_note_page_shows_parcels(two):
     apply(two, preview(two, xlsx(good_rows())).text)
     html = two.get("/admin/nota/2").text
-    assert "Lançamento e pagamento (ERP)" in html and "1/-1" in html and "pago em 26/06/2026" in html and "em aberto" in html
+    assert "Lançamento e pagamento (ERP)" in html and "1/-1" in html and "1/-2" in html
+    assert 'name="lanc" type="date" value="2026-05-31"' in html and 'value="2026-06-26"' in html
 
 
 # ---------------------------------------------------------------- exportações
@@ -320,3 +321,60 @@ def test_no_missing_card_without_orphans(two):
 
 def test_visitor_cannot_change_missing_message(client):
     assert client.post("/admin/faltando", data={"csrf": "x", "msg": "hack", "mostrar": "1"}, follow_redirects=False).status_code in (303, 403)
+
+
+
+# ---------------------------------------------------------------- edição manual de lançamento e pagamento
+
+def edit_erp(c, nid, **data):
+    return c.post(f"/admin/nota/{nid}/erp", data={"csrf": c.csrf, **data}, follow_redirects=True)
+
+
+def tid(c, nid, titulo):
+    with c.app.state.engine.connect() as conn:
+        return conn.execute(text("select id from titulos where note_id = :n and titulo = :t"), {"n": nid, "t": titulo}).scalar()
+
+
+def test_set_launch_date_on_linked_note_without_it(two):
+    apply(two, preview(two, xlsx(good_rows())).text)
+    t1, t2 = tid(two, 2, "1/-1"), tid(two, 2, "1/-2")
+    r = edit_erp(two, 2, lanc="2026-06-02", **{f"v_{t1}": "2026-06-26", f"p_{t1}": "2026-06-26", f"pago_{t1}": "1",
+                                               f"v_{t2}": "2026-07-26", f"p_{t2}": "2026-07-25", f"pago_{t2}": "1"})
+    assert "Lançamento e pagamento de NFS-e 1 atualizados" in r.text and 'value="2026-06-02"' in r.text
+    assert situacoes(two)[2] == "paga"
+    page = two.get("/nota/2").text
+    assert "02/06/2026" in page and "pago em 25/07/2026" in page and 'href="/admin/nota/2#erp"' in page and "editado à mão em" in two.get("/admin/nota/2").text
+
+
+def test_add_parcel_to_note_without_parcels_and_validation(two):
+    assert "Adicionar parcela (vencimento e pagamento)" in two.get("/admin/nota/1").text
+    assert "marque a data de pagamento" in edit_erp(two, 1, lanc="2026-03-11", n_venc="2026-03-31", n_pago="1").text
+    assert "data inválida" in edit_erp(two, 1, lanc="2026-13-40").text
+    assert "fora do razoável" in edit_erp(two, 1, lanc="3082-01-01").text
+    assert situacoes(two)[1] == "sem_lancamento"  # nada gravado com erro
+    r = edit_erp(two, 1, lanc="2026-03-11", n_titulo="316/1-1", n_venc="2026-03-31", n_pag="2026-03-30", n_pago="1")
+    assert "atualizados" in r.text and situacoes(two)[1] == "paga"
+    with two.app.state.engine.connect() as conn:
+        assert conn.execute(text("select valor_nominal_cents, valor_pago_cents from titulos where note_id = 1")).one() == (140000, 140000)
+
+
+def test_only_launch_date_makes_note_a_pagar(two):
+    edit_erp(two, 1, lanc="2026-03-11")
+    assert situacoes(two)[1] == "a_pagar"
+    edit_erp(two, 1, lanc="")
+    assert situacoes(two)[1] == "sem_lancamento"
+
+
+def test_remove_parcel_and_unmark_paid(two):
+    apply(two, preview(two, xlsx(good_rows())).text)
+    t1, t2 = tid(two, 2, "1/-1"), tid(two, 2, "1/-2")
+    edit_erp(two, 2, lanc="2026-05-31", **{f"v_{t1}": "2026-06-26", f"p_{t1}": "", f"del_{t2}": "1"})
+    assert situacoes(two)[2] == "a_pagar"
+    with two.app.state.engine.connect() as conn:
+        assert conn.execute(text("select count(*) from titulos where note_id = 2")).scalar() == 1
+
+
+def test_manual_edit_requires_admin_and_csrf(client, two):
+    assert client.post("/admin/nota/1/erp", data={"csrf": "x", "lanc": "2026-03-11"}, follow_redirects=False).status_code in (303, 403)
+    assert two.post("/admin/nota/1/erp", data={"csrf": "errado", "lanc": "2026-03-11"}).status_code == 403
+    assert situacoes(two)[1] == "sem_lancamento"

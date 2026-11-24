@@ -413,3 +413,60 @@ class PendingImports:
         with self._lock:
             item = self._d.pop(token, None)
         return item[1] if item and time.monotonic() - item[0] < self.TTL else None
+
+
+# ---------------------------------------------------------------- edição manual (admin)
+
+def _form_date(v: str, nome: str) -> date | None:
+    v = (v or "").strip()
+    if not v:
+        return None
+    try:
+        d = date.fromisoformat(v) if "-" in v else _date(v, nome)
+    except ValueError:
+        raise ValueError(f"{nome}: data inválida.") from None
+    if not date(2000, 1, 1) <= d <= date.today() + timedelta(days=730):
+        raise ValueError(f"{nome}: data fora do razoável ({d:%d/%m/%Y}).")
+    return d
+
+
+def edit_manual(db: Session, note: Note, form) -> str | None:
+    """Edita lançamento e parcelas à mão. Retorna mensagem de erro ou None. A próxima conciliação do ERP prevalece."""
+    try:
+        lanc = _form_date(form.get("lanc", ""), "Lançamento")
+        for t in list(note.titulos):
+            if form.get(f"del_{t.id}") == "1":
+                note.titulos.remove(t)
+                continue
+            nome = f"Parcela {t.titulo or t.parcela}"
+            t.vencimento = _form_date(form.get(f"v_{t.id}", ""), nome + " (vencimento)")
+            t.data_pagamento = _form_date(form.get(f"p_{t.id}", ""), nome + " (pagamento)")
+            pago = form.get(f"pago_{t.id}") == "1"
+            if pago and not t.data_pagamento:
+                raise ValueError(f"{nome}: marque a data de pagamento.")
+            if pago != t.pago:  # só mexe no valor pago se o "paga" mudou (preserva pagamento parcial vindo do ERP)
+                t.valor_pago_cents = t.valor_nominal_cents if pago else 0
+        novo = {k: (form.get(f"n_{k}") or "").strip() for k in ("titulo", "venc", "pag", "valor", "pago")}
+        if any(novo[k] for k in ("titulo", "venc", "pag", "valor")):
+            restante = note.valor_cents - sum(t.valor_nominal_cents for t in note.titulos)
+            valor = _money(novo["valor"], "Nova parcela (valor)") if novo["valor"] else restante
+            if not valor or valor <= 0:
+                raise ValueError("Nova parcela: informe o valor.")
+            pag = _form_date(novo["pag"], "Nova parcela (pagamento)")
+            if novo["pago"] == "1" and not pag:
+                raise ValueError("Nova parcela: marque a data de pagamento.")
+            note.titulos.append(Titulo(
+                titulo=_text(novo["titulo"], 40), parcela=max([t.parcela for t in note.titulos] + [0]) + 1,
+                vencimento=_form_date(novo["venc"], "Nova parcela (vencimento)"), data_pagamento=pag,
+                valor_nominal_cents=valor, valor_pago_cents=valor if novo["pago"] == "1" else 0, especie=""))
+    except ValueError as exc:
+        db.rollback()
+        return str(exc)
+    note.data_lancamento = lanc
+    note.conciliado_em = utcnow()
+    marca = f"editado à mão em {date.today():%d/%m/%Y}"
+    base = re.sub(r"\s*·?\s*editado à mão em \d{2}/\d{2}/\d{4}", "", note.conciliacao_obs or "").strip(" ·")
+    note.conciliacao_obs = (f"{base} · {marca}" if base else marca)[:300]
+    recompute(note)
+    db.commit()
+    return None

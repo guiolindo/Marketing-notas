@@ -29,7 +29,7 @@
 
 <div class="grid cols-2 nd-grid">
   <section class="card">
-    <h2>Datas</h2>
+    <div class="card-head"><h2>Datas</h2>{% if is_admin %}<a class="small strong" href="/admin/nota/{{ note.id }}#erp">{{ ico('edit', 14) }} Editar datas</a>{% endif %}</div>
     <ol class="timeline">
       <li class="done"><span class="tl-k">Emissão</span><span class="tl-v">{{ note.data_emissao|dmy }}</span></li>
       <li class="{{ 'done' if note.data_lancamento }}"><span class="tl-k">Lançamento no ERP</span><span class="tl-v">{{ note.data_lancamento|dmy if note.data_lancamento else 'ainda não' }}</span></li>

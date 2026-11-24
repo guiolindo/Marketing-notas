@@ -51,6 +51,8 @@ emissão, valor, lançamento, vencimento, pagamento; parcelas da mesma nota entr
 sai da lista. O PDF passa pelas mesmas travas de segurança e duplicidade do envio normal.
 Título que não é da loja (lançado errado no ERP) sai com **Remover da lista** (com motivo); o sistema lembra disso e ele
 não volta nas próximas conciliações. A lista dos removidos fica no cartão Conciliação, com **Restaurar**.
+Lançamento e pagamento também podem ser **editados à mão** em `/admin/nota/{id}` (data de lançamento, vencimento, data de
+pagamento e "paga" de cada parcela, remover ou adicionar parcela); a próxima conciliação do ERP para a nota prevalece.
 
 **Exportações** (topo do site, respeitam os filtros): PDF único e **planilha Excel** (.xlsx com abas Notas e Parcelas,
 chave e número como texto, datas e valores formatados, linha de total; texto nunca vira fórmula).

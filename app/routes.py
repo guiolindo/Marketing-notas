@@ -501,3 +501,18 @@ def admin_restore_ignored(ignorado_id: int, request: Request, csrf: str = Form("
         audit(db, request, request.app.state.settings, "restaurou_titulo", f"{nome_erp(ig.fornecedor)} · título {ig.titulo}")
         _flash(request, "ok", f"{nome_erp(ig.fornecedor)} · título {ig.titulo} voltou para a lista de faltantes.")
     return RedirectResponse("/admin#conciliacao", status_code=303)
+
+
+@router.post("/admin/nota/{note_id}/erp")
+async def admin_edit_erp(note_id: int, request: Request, db: Session = Depends(get_db), _=Depends(require_admin)):
+    from app.services.conciliacao import edit_manual
+    form = await request.form()
+    _post_guard(request, str(form.get("csrf", "")))
+    note = _get_note(db, note_id)
+    error = edit_manual(db, note, {k: str(v)[:200] for k, v in form.items() if isinstance(v, str)})
+    if error:
+        _flash(request, "error", error)
+    else:
+        audit(db, request, request.app.state.settings, "editou_erp", f"{note.label} · lançamento {note.data_lancamento or '—'}")
+        _flash(request, "ok", f"Lançamento e pagamento de {note.label} atualizados.")
+    return RedirectResponse(f"/admin/nota/{note_id}#erp", status_code=303)

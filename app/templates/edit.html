@@ -30,25 +30,45 @@
   </div>
 </div>
 
-<section class="card">
+<section class="card" id="erp">
   <div class="card-head"><h2>Lançamento e pagamento (ERP)</h2>
     <span class="sit sit-{{ {'paga':'paga','parcial':'parcial','a_pagar':'aberto','sem_lancamento':'sem'}[note.situacao] }}">{{ {'paga':'Paga','parcial':'Paga em parte','a_pagar':'A pagar','sem_lancamento':'Sem lançamento'}[note.situacao] }}</span></div>
-  {% if note.situacao == 'sem_lancamento' %}
-  <p class="muted">Ainda não conciliada. Os dados chegam pela importação do arquivo de conciliação em <a href="/admin#conciliacao">Conciliação</a>.</p>
-  {% else %}
-  <dl class="facts">
-    <dt>Lançamento</dt><dd>{{ note.data_lancamento|dmy }}</dd>
-    <dt>Pago</dt><dd>{{ note.pago_cents|brl }} de {{ (note.nominal_cents or note.valor_cents)|brl }}{% if note.aberto_cents %} · em aberto {{ note.aberto_cents|brl }}{% endif %}</dd>
-    {% if note.conciliacao_obs %}<dt>Conciliação</dt><dd class="small">{{ note.conciliacao_obs }}</dd>{% endif %}
-    <dt>Atualizado</dt><dd class="small">{{ note.conciliado_em|dthr }}</dd>
-  </dl>
-  {% if note.titulos %}
-  <ul class="pl-tit big">{% for t in note.titulos %}
-    <li><strong>{{ t.titulo or ('parcela ' ~ t.parcela) }}</strong> · venc. {{ t.vencimento|dmy }} · {{ t.valor_nominal_cents|brl }} ·
-      {% if t.pago %}<span class="ok-txt">pago em {{ t.data_pagamento|dmy }}</span>{% elif t.valor_pago_cents %}pago {{ t.valor_pago_cents|brl }} em {{ t.data_pagamento|dmy }}{% elif t.data_pagamento %}pagamento previsto {{ t.data_pagamento|dmy }}{% else %}em aberto{% endif %}
-      {% if t.especie %}<span class="muted small">· {{ t.especie }}</span>{% endif %}</li>{% endfor %}</ul>
+  {% if note.situacao != 'sem_lancamento' %}
+  <p class="muted small">Pago {{ note.pago_cents|brl }} de {{ (note.nominal_cents or note.valor_cents)|brl }}{% if note.aberto_cents %} · em aberto {{ note.aberto_cents|brl }}{% endif %}
+    {% if note.conciliacao_obs %} · {{ note.conciliacao_obs }}{% endif %}{% if note.conciliado_em %} · atualizado {{ note.conciliado_em|dthr }}{% endif %}</p>
   {% endif %}
-  <form method="post" action="/admin/nota/{{ note.id }}/limpar-conciliacao" data-confirm="Remover lançamento e parcelas de {{ note.label }}? Volta para 'Sem lançamento' até a próxima importação.">
+  <form method="post" action="/admin/nota/{{ note.id }}/erp" class="erp-form">
+    <input type="hidden" name="csrf" value="{{ csrf() }}">
+    <div class="field erp-lanc"><label for="lanc">Data de lançamento no ERP</label>
+      <input id="lanc" name="lanc" type="date" value="{{ note.data_lancamento.isoformat() if note.data_lancamento else '' }}"></div>
+    {% if note.titulos %}
+    <div class="erp-parc">
+      {% for t in note.titulos %}
+      <fieldset class="parc-row">
+        <legend><strong>{{ t.titulo or ('Parcela ' ~ t.parcela) }}</strong> · {{ t.valor_nominal_cents|brl }}{% if t.especie %} <span class="muted small">{{ t.especie }}</span>{% endif %}</legend>
+        <div class="field"><label for="v{{ t.id }}">Vencimento</label><input id="v{{ t.id }}" name="v_{{ t.id }}" type="date" value="{{ t.vencimento.isoformat() if t.vencimento else '' }}"></div>
+        <div class="field"><label for="p{{ t.id }}">Pagamento</label><input id="p{{ t.id }}" name="p_{{ t.id }}" type="date" value="{{ t.data_pagamento.isoformat() if t.data_pagamento else '' }}"></div>
+        <label class="chk"><input type="checkbox" name="pago_{{ t.id }}" value="1" {{ 'checked' if t.pago }}> Paga</label>
+        <label class="chk del"><input type="checkbox" name="del_{{ t.id }}" value="1"> Remover parcela</label>
+      </fieldset>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <details class="parc-new" {{ 'open' if not note.titulos }}><summary>{{ 'Adicionar parcela' if note.titulos else 'Adicionar parcela (vencimento e pagamento)' }}</summary>
+      <fieldset class="parc-row">
+        <div class="field"><label for="ntit">Título no ERP <span class="muted">(opcional)</span></label><input id="ntit" name="n_titulo" type="text" maxlength="40" placeholder="Ex.: 1616/-1"></div>
+        <div class="field"><label for="nval">Valor</label><input id="nval" name="n_valor" type="text" inputmode="decimal" placeholder="{{ (note.valor_cents - note.titulos|sum(attribute='valor_nominal_cents'))|brl }}"></div>
+        <div class="field"><label for="nven">Vencimento</label><input id="nven" name="n_venc" type="date"></div>
+        <div class="field"><label for="npag">Pagamento</label><input id="npag" name="n_pag" type="date"></div>
+        <label class="chk"><input type="checkbox" name="n_pago" value="1"> Paga</label>
+      </fieldset>
+      <p class="muted small">Valor em branco = o que falta da nota.</p>
+    </details>
+    <div class="actions"><button class="btn primary" type="submit">Salvar lançamento e pagamento</button></div>
+    <p class="muted small">Se depois vier uma conciliação do ERP para esta nota, ela substitui o que foi editado aqui.</p>
+  </form>
+  {% if note.situacao != 'sem_lancamento' %}
+  <form method="post" action="/admin/nota/{{ note.id }}/limpar-conciliacao" class="erp-clear" data-confirm="Remover lançamento e parcelas de {{ note.label }}? Volta para 'Sem lançamento' até a próxima importação.">
     <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="btn danger sm" type="submit">Remover lançamento e parcelas</button></form>
   {% endif %}
 </section>

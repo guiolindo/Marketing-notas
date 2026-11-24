@@ -235,6 +235,12 @@ tbody tr[data-href] { cursor: pointer; } .rowlink { color: var(--text); display:
 .vinc-form .field { min-width: 0; } .vf-file, .vf-wide { grid-column: 1 / -1; } .vinc-form p { margin: 0 0 10px; } .vinc-form input[type=file] { max-width: 100%; font-size: 13px; }
 .ign summary { color: var(--bad); } .ign-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; margin-top: 8px; padding: 12px; border: 1px solid var(--bad-line); border-radius: 10px; background: #fff; }
 .ign-form .field { margin: 0; min-width: 0; } .ignorados summary { color: var(--muted); } .ignorados form { margin: 4px 0 0; }
+.erp-form { margin-top: 6px; } .erp-lanc { max-width: 260px; }
+.erp-parc { display: grid; gap: 10px; margin-bottom: 10px; }
+.parc-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 12px; align-items: end; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.parc-row legend { padding: 0 6px; font-size: 13px; } .parc-row .field { margin-bottom: 8px; min-width: 0; }
+.chk { display: flex; align-items: center; gap: 6px; margin: 0 0 16px; font-size: 13px; white-space: nowrap; } .chk.del { color: var(--bad); }
+.parc-new { margin: 6px 0 14px; } .parc-new summary { cursor: pointer; font-weight: 700; color: var(--accent); margin-bottom: 8px; } .erp-clear { margin-top: 12px; }
 .chip-scan { background: var(--orange-soft); color: var(--orange-dark); border-color: var(--orange-line); }
 /* envio */
 .upload-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; align-items: stretch; }
@@ -351,6 +357,7 @@ tfoot td { font-weight: 700; background: var(--surface-2); border-bottom: 0; } t
   .res { grid-template-columns: minmax(0, 1fr); gap: 2px; } .fname, .rmsg { white-space: normal; overflow-wrap: anywhere; }
   .facts { grid-template-columns: minmax(0, 1fr); gap: 0; } .facts dd { margin-bottom: 8px; overflow-wrap: anywhere; }
   .cols-2, .dev-split, .steps3, .ft-row, .vinc-form, .ign-form { grid-template-columns: minmax(0, 1fr); }
+  .parc-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .erp-lanc { max-width: none; }
   .faltando > summary { padding: 12px 14px; gap: 10px; } .ft-ico { flex-basis: 32px; height: 32px; } .ft-list { padding: 0 14px 10px; }
   .nd-valor { font-size: 30px; } .nd-actions .btn { flex: 1; }
   .status-strip { gap: 6px; } .st { padding: 9px 10px; min-width: 0; } .st-label { font-size: 10px; letter-spacing: .04em; } .st-value { font-size: 15px; overflow-wrap: anywhere; } .st-sub { font-size: 11px; } .cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dev-kpis .kpi:first-child { grid-column: 1 / -1; }
