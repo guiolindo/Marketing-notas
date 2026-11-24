@@ -25,6 +25,7 @@ def _dthr(dt) -> str:
 
 
 templates.env.filters["dthr"] = _dthr
+templates.env.filters["erpnome"] = lambda n: __import__("re").sub(r"\s+-\s+\d+$", "", n or "")
 templates.env.filters["chave"] = lambda c: " ".join((c or "")[i:i + 4] for i in range(0, len(c or ""), 4))
 templates.env.filters["doc"] = lambda s: s or "—"
 

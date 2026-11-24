@@ -42,6 +42,10 @@ totais (Pago / A pagar / Sem lançamento) e nas exportações. O fluxo, em `/adm
    cada nota do arquivo tem as parcelas substituídas (reimportar não duplica). Títulos do ERP sem PDF no sistema ficam
    listados no `/admin` para lançar os PDFs que faltam.
 
+**Notas aguardando PDF**: os títulos do ERP sem PDF (aba `sem_pdf` da última conciliação) aparecem para todos num cartão
+com a mensagem do admin (padrão "Solicitamos por e-mail ao CDI."), editável e com opção de esconder em `/admin` →
+Conciliação. A lista diminui sozinha quando os PDFs forem lançados e conciliados.
+
 **Exportações** (topo do site, respeitam os filtros): PDF único e **planilha Excel** (.xlsx com abas Notas e Parcelas,
 chave e número como texto, datas e valores formatados, linha de total; texto nunca vira fórmula).
 

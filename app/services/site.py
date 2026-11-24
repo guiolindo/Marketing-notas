@@ -90,3 +90,29 @@ def build_banner(preset: str, text: str, kind: str) -> tuple[Banner | None, str 
             return None, f"A mensagem tem {len(clean)} caracteres (máximo {MAX_TEXT})."
         return Banner(clean, kind if kind in KINDS else "info", "custom"), None
     return None, "Opção de aviso inválida."
+
+
+# ---------------------------------------------------------------- aviso "notas aguardando PDF"
+
+FALTANDO_DEFAULT = "Solicitamos por e-mail ao CDI."
+FALTANDO_MAX = 200
+
+
+def get_faltando(db: Session) -> tuple[bool, str]:
+    """(mostrar no site, mensagem). Ligado por padrão: a lista só aparece quando há títulos sem PDF."""
+    rows = {r.key: r.value for r in db.query(SiteSetting).filter(SiteSetting.key.like("faltando_%"))}
+    return rows.get("faltando_on", "1") == "1", rows.get("faltando_msg", FALTANDO_DEFAULT)
+
+
+def set_faltando(db: Session, on: bool, msg: str) -> str | None:
+    clean = re.sub(r"\s+", " ", _CTRL.sub(" ", msg or "")).strip()
+    if len(clean) > FALTANDO_MAX:
+        return f"A mensagem tem {len(clean)} caracteres (máximo {FALTANDO_MAX})."
+    for k, v in {"faltando_on": "1" if on else "0", "faltando_msg": clean}.items():
+        row = db.get(SiteSetting, k)
+        if row:
+            row.value = v
+        else:
+            db.add(SiteSetting(key=k, value=v))
+    db.commit()
+    return None

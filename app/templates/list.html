@@ -105,6 +105,23 @@
 </section>
 {% endif %}
 
+{% if faltando and (faltando.on or base == '/admin') %}
+<details class="card faltando{{ ' off' if not faltando.on }}" {{ 'open' if base != '/admin' and faltando.lista|length <= 8 }}>
+  <summary>
+    <span class="ft-ico" aria-hidden="true">{{ ico('files', 20) }}</span>
+    <span class="ft-txt"><strong>{{ faltando.lista|length }} nota{{ 's' if faltando.lista|length != 1 }} aguardando PDF</strong>
+      <span class="ft-msg">{{ faltando.msg }}{% if not faltando.on %} <em>(aviso desligado: só o admin vê)</em>{% endif %}</span></span>
+    <span class="ft-val">{{ faltando.total|brl }}</span>
+  </summary>
+  <ul class="ft-list">
+    {% for o in faltando.lista %}
+    <li><span class="ft-forn">{{ o.fornecedor|erpnome }}</span><span class="ft-v">{{ o.valor_cents|brl }}</span>
+      <span class="ft-sub">título {{ o.titulo or '—' }} · emissão {{ o.data_emissao|dmy }}{% if o.data_pagamento %} · paga {{ o.data_pagamento|dmy }}{% endif %}</span></li>
+    {% endfor %}
+  </ul>
+</details>
+{% endif %}
+
 {% if stats.count %}
 <section class="grid cols-main charts" aria-label="Gráficos">
   <div class="card">
@@ -219,10 +236,17 @@
       </form></div></li>
   </ol>
   {% if conc.orfaos %}
-  <details class="orfaos"><summary>{{ conc.orfaos|length }} título{{ 's' if conc.orfaos|length != 1 }} do ERP sem PDF no sistema</summary>
-    <ul>{% for o in conc.orfaos %}<li><span class="o-main"><strong>{{ o.fornecedor }}</strong> · título {{ o.titulo or '—' }}</span><span class="o-val">{{ o.valor_cents|brl }}</span>
-      <span class="muted small o-sub">emissão {{ o.data_emissao|dmy }}{% if o.data_pagamento %} · pago {{ o.data_pagamento|dmy }}{% endif %}{% if o.motivo %} · {{ o.motivo }}{% endif %}</span></li>{% endfor %}</ul>
-  </details>
+  <form class="ft-form" method="post" action="/admin/faltando">
+    <input type="hidden" name="csrf" value="{{ csrf() }}">
+    <strong>Aviso no site: {{ conc.orfaos|length }} nota{{ 's' if conc.orfaos|length != 1 }} aguardando PDF</strong>
+    <div class="ft-row">
+      <div class="field"><label for="ft-msg">Mensagem para quem vê o site</label>
+        <input id="ft-msg" name="msg" type="text" maxlength="{{ faltando_max }}" value="{{ faltando.msg if faltando else '' }}" placeholder="Ex.: Solicitamos por e-mail ao CDI em 24/11."></div>
+      <label class="ft-check"><input type="checkbox" name="mostrar" value="1" {{ 'checked' if faltando and faltando.on }}> Mostrar no site</label>
+      <button class="btn primary" type="submit">Salvar</button>
+    </div>
+    <p class="muted small">A lista sai da última conciliação (aba sem_pdf) e diminui sozinha quando os PDFs forem lançados e conciliados.</p>
+  </form>
   {% endif %}
 </section>
 {% endif %}

@@ -48,7 +48,7 @@ from app.services.notes import (
     query_notes,
 )
 from app.services.sheets import build_system_export, build_xlsx
-from app.services.site import MAX_TEXT, PRESETS, build_banner
+from app.services.site import FALTANDO_MAX, MAX_TEXT, PRESETS, build_banner, get_faltando, set_faltando
 from app.web import render
 
 router = APIRouter()
@@ -110,7 +110,16 @@ def list_view(request: Request, db: Session, admin: bool, results=None):
                                  request.headers.get("user-agent", ""), request.headers.get("sec-gpc") == "1") if admin else None, presets=PRESETS, max_banner=MAX_TEXT, max_mb=request.app.state.settings.max_upload_mb,
                   max_files=request.app.state.settings.max_files_per_upload,
                   recent=db.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(12)).all() if admin else [],
-                  conc=_conciliation_info(db) if admin else None)
+                  conc=_conciliation_info(db) if admin else None, faltando=_faltando(db, admin), faltando_max=FALTANDO_MAX)
+
+
+def _faltando(db: Session, admin: bool) -> dict | None:
+    """Títulos do ERP sem PDF + mensagem do admin. Visitante só vê se o aviso estiver ligado e houver itens."""
+    on, msg = get_faltando(db)
+    items = db.scalars(select(ErpOrfao).order_by(ErpOrfao.data_emissao.asc().nulls_last(), ErpOrfao.id)).all()
+    if not items or (not on and not admin):
+        return None
+    return {"on": on, "msg": msg, "lista": items, "total": sum(o.valor_cents for o in items)}
 
 
 def _conciliation_info(db: Session) -> dict:
@@ -422,3 +431,16 @@ def admin_clear_conciliation(note_id: int, request: Request, csrf: str = Form(""
     audit(db, request, request.app.state.settings, "limpou_conciliacao", note.label)
     _flash(request, "ok", f"Lançamento e pagamentos de {note.label} removidos.")
     return RedirectResponse(f"/admin/nota/{note_id}", status_code=303)
+
+
+@router.post("/admin/faltando")
+def admin_faltando(request: Request, msg: str = Form("", max_length=1000), mostrar: str = Form(""), csrf: str = Form(""),
+                   db: Session = Depends(get_db), _=Depends(require_admin)):
+    _post_guard(request, csrf)
+    error = set_faltando(db, mostrar == "1", msg)
+    if error:
+        _flash(request, "error", error)
+    else:
+        audit(db, request, request.app.state.settings, "aviso_faltando", ("ligado: " if mostrar == "1" else "desligado: ") + msg[:60])
+        _flash(request, "ok", "Aviso das notas aguardando PDF atualizado.")
+    return RedirectResponse("/admin#conciliacao", status_code=303)

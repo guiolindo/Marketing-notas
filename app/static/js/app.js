@@ -101,6 +101,11 @@
     });
   });
 
+  // Notas aguardando PDF: no celular começa fechado (só o resumo)
+  if (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) {
+    document.querySelectorAll("details.faltando[open]").forEach(function (d) { d.open = false; });
+  }
+
   // Mensagens de sucesso somem sozinhas
   document.querySelectorAll("[data-flash].ok").forEach(function (el) {
     setTimeout(function () { el.style.transition = "opacity .4s"; el.style.opacity = "0"; }, 5000);

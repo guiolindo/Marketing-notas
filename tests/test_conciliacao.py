@@ -133,7 +133,7 @@ def test_orphans_sheet_is_stored_and_listed(two):
     r = preview(two, xlsx(good_rows(), orphans=orf))
     apply(two, r.text)
     adm = two.get("/admin").text
-    assert "1 título do ERP sem PDF no sistema" in adm and "FORNECEDOR SEM PDF LTDA" in adm and "R$ 12.900,00" in adm
+    assert "1 nota aguardando PDF" in adm and "FORNECEDOR SEM PDF LTDA" in adm and "R$ 12.900,00" in adm
 
 
 def test_csv_import_and_missing_columns(two):
@@ -279,3 +279,44 @@ def test_script_quitacao_date_means_paid(tmp_path):
     assert docs["10"].parcelas[0]["pago"] == 296000 and docs["10"].quitacao_manual
     assert docs["11"].parcelas[0]["pago"] == 0 and not docs["11"].quitacao_manual
     assert docs["12"].parcelas[0]["pago"] == 10000 and not docs["12"].quitacao_manual
+
+
+
+# ---------------------------------------------------------------- aviso público "notas aguardando PDF"
+
+ORF = [["BWP COMERCIO LTDA - 175233", "23.439.537/0001-58", "1616/-1", datetime(2026, 6, 1), datetime(2026, 6, 29),
+        datetime(2026, 6, 26), 2378.88, "PDF não lançado"],
+       ["NEW ATP MARKETING - 233973", "62.284.329/0001-89", "53/-1", datetime(2026, 8, 3), datetime(2026, 8, 31), None, 4800, ""]]
+
+
+def test_missing_pdfs_card_for_visitors(client, two):
+    apply(two, preview(two, xlsx(good_rows(), orphans=ORF)).text)
+    from fastapi.testclient import TestClient
+    v = TestClient(client.app, base_url="https://testserver")
+    html = v.get("/").text
+    assert "2 notas aguardando PDF" in html and "Solicitamos por e-mail ao CDI." in html and "R$ 7.178,88" in html
+    assert "BWP COMERCIO LTDA<" in html and "175233" not in html  # código do ERP some do nome
+    assert "título 1616/-1" in html and "paga 26/06/2026" in html
+
+
+def test_admin_edits_message_and_can_hide_it(client, two):
+    apply(two, preview(two, xlsx(good_rows(), orphans=ORF)).text)
+    r = two.post("/admin/faltando", data={"csrf": two.csrf, "msg": "Pedimos ao CDI por e-mail em 24/11.", "mostrar": "1"}, follow_redirects=True)
+    assert "Aviso das notas aguardando PDF atualizado" in r.text
+    from fastapi.testclient import TestClient
+    v = TestClient(client.app, base_url="https://testserver")
+    assert "Pedimos ao CDI por e-mail em 24/11." in v.get("/").text
+    two.post("/admin/faltando", data={"csrf": two.csrf, "msg": "x"})  # sem "mostrar" = desligado
+    assert "aguardando PDF" not in v.get("/").text
+    assert "aviso desligado: só o admin vê" in two.get("/admin").text
+    assert two.post("/admin/faltando", data={"csrf": "errado", "msg": "y", "mostrar": "1"}).status_code == 403
+    assert "máximo" in two.post("/admin/faltando", data={"csrf": two.csrf, "msg": "z" * 201, "mostrar": "1"}, follow_redirects=True).text
+
+
+def test_no_missing_card_without_orphans(two):
+    apply(two, preview(two, xlsx(good_rows(), orphans=[])).text)
+    assert "aguardando PDF" not in two.get("/").text and "aguardando PDF" not in two.get("/admin").text
+
+
+def test_visitor_cannot_change_missing_message(client):
+    assert client.post("/admin/faltando", data={"csrf": "x", "msg": "hack", "mostrar": "1"}, follow_redirects=False).status_code in (303, 403)
