@@ -109,7 +109,7 @@
 <details class="card faltando{{ ' off' if not faltando.on }}" id="faltando" {{ 'open' if base == '/admin' or faltando.lista|length <= 8 }}>
   <summary>
     <span class="ft-ico" aria-hidden="true">{{ ico('files', 20) }}</span>
-    <span class="ft-txt"><strong>{{ faltando.lista|length }} nota{{ 's' if faltando.lista|length != 1 }} aguardando PDF</strong>
+    <span class="ft-txt"><strong>{{ faltando.notas }} nota{{ 's' if faltando.notas != 1 }} aguardando PDF{% if faltando.lista|length != faltando.notas %} <span class="ft-tit">({{ faltando.lista|length }} títulos)</span>{% endif %}</strong>
       <span class="ft-msg">{{ faltando.msg }}{% if not faltando.on %} <em>(aviso desligado: só o admin vê)</em>{% endif %}</span></span>
     <span class="ft-val">{{ faltando.total|brl }}</span>
   </summary>
@@ -129,6 +129,13 @@
           <div class="field vf-wide"><label for="vd-{{ o.id }}">Descrição <span class="muted">(opcional)</span></label><input id="vd-{{ o.id }}" name="descricao" type="text" maxlength="500" placeholder="Ex.: Locação de equipamento de som"></div>
           <p class="muted small vf-wide">Fornecedor, CNPJ, emissão, valor, vencimento e pagamento vêm do ERP. Sem dados bancários na descrição.</p>
           <button class="btn primary vf-wide" type="submit">{{ ico('check', 16) }}Vincular a este título</button>
+        </form>
+      </details>
+      <details class="vinc ign"><summary>{{ ico('trash', 15) }}Remover da lista</summary>
+        <form method="post" action="/admin/faltando/{{ o.id }}/ignorar" class="ign-form" data-confirm="Remover {{ o.fornecedor|erpnome }} · título {{ o.titulo }} da lista de faltantes? Ele não volta nas próximas conciliações (dá para restaurar no cartão Conciliação).">
+          <input type="hidden" name="csrf" value="{{ csrf() }}">
+          <div class="field"><label for="im-{{ o.id }}">Motivo</label><input id="im-{{ o.id }}" name="motivo" type="text" maxlength="200" value="Não é nota da loja (lançado errado)"></div>
+          <button class="btn danger" type="submit">Remover</button>
         </form>
       </details>{% endif %}</li>
     {% endfor %}
@@ -261,6 +268,13 @@
     </div>
     <p class="muted small">A lista sai da última conciliação (aba sem_pdf) e diminui sozinha quando os PDFs forem lançados e conciliados.</p>
   </form>
+  {% endif %}
+  {% if conc.ignorados %}
+  <details class="orfaos ignorados"><summary>{{ conc.ignorados|length }} título{{ 's' if conc.ignorados|length != 1 }} removido{{ 's' if conc.ignorados|length != 1 }} da lista de faltantes</summary>
+    <ul>{% for i in conc.ignorados %}<li><span class="o-main"><strong>{{ i.fornecedor|erpnome }}</strong> · título {{ i.titulo }}</span><span class="o-val">{{ i.valor_cents|brl }}</span>
+      <span class="muted small o-sub">{{ i.motivo }} · removido em {{ i.at|dthr }}</span>
+      <form class="o-sub" method="post" action="/admin/ignorados/{{ i.id }}/restaurar"><input type="hidden" name="csrf" value="{{ csrf() }}"><button class="btn sm" type="submit">Restaurar</button></form></li>{% endfor %}</ul>
+  </details>
   {% endif %}
 </section>
 {% endif %}

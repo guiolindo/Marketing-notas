@@ -22,8 +22,9 @@ def scanned_pdf(tag: str = "a") -> bytes:
 
 def with_orphans(c):
     upload(c, c.csrf, ("d.pdf", danfe_pdf(numero=316)))
-    from openpyxl import Workbook
     import io
+
+    from openpyxl import Workbook
     wb = Workbook()
     ws = wb.active
     ws.title = "conciliacao"
@@ -57,7 +58,7 @@ def test_link_scanned_pdf_creates_note_from_erp(admin):
     assert "não informada" in r.text and "PDF escaneado" in r.text and "manual-" not in r.text
     assert "título 1616/-1" not in admin.get("/").text  # saiu da lista de faltantes
     home = admin.get("/").text
-    assert "2 notas aguardando PDF" in home  # sobraram as 2 parcelas da GRAFICA X (mesma nota)
+    assert "1 nota aguardando PDF" in home and "(2 títulos)" in home  # sobraram as 2 parcelas da GRAFICA X (mesma nota)
     assert 'chip-scan' in home
     nid = int(re.search(r"/nota/(\d+)", r.url.path if hasattr(r.url, "path") else str(r.url)).group(1))
     assert admin.get(f"/nota/{nid}.pdf").content.startswith(b"%PDF-")
@@ -123,3 +124,63 @@ def test_linked_note_is_exported_without_fake_key_and_reconciles(admin):
     novo[2] = datetime(2026, 6, 8)  # lançamento corrigido no ERP
     r = preview(admin, xlsx([novo]))
     assert "Aplicar 1 alteração" in r.text
+
+
+# ---------------------------------------------------------------- remover da lista de faltantes
+
+def ignore(c, oid, motivo="Não é nota da loja (lançado errado)"):
+    return c.post(f"/admin/faltando/{oid}/ignorar", data={"csrf": c.csrf, "motivo": motivo}, follow_redirects=True)
+
+
+def test_remove_orphan_from_missing_list_and_it_stays_removed(admin):
+    ids = with_orphans(admin)
+    r = ignore(admin, ids["1616/-1"])
+    assert "Removido da lista de faltantes: BWP COMERCIO LTDA · título 1616/-1" in r.text
+    assert "título 1616/-1" not in admin.get("/").text and "1 nota aguardando PDF" in admin.get("/").text
+    adm = admin.get("/admin").text
+    assert "1 título removido da lista de faltantes" in adm and "Não é nota da loja (lançado errado)" in adm
+    # a planilha do ERP ainda tem o título: reimportar NÃO traz de volta
+    with_orphans_again = with_orphans  # mesma conciliação + aba sem_pdf com os 3 títulos
+    from openpyxl import Workbook
+    import io
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "conciliacao"
+    ws.append(["id_sistema", "chave_acesso", "data_lancamento", "titulo", "parcela", "vencimento", "data_pagamento", "valor_nominal", "valor_pago"])
+    ws.append(good_rows()[0][:9])
+    wo = wb.create_sheet("sem_pdf")
+    wo.append(ORF_COLS)
+    for o in ORFAOS:
+        wo.append(o)
+    b = io.BytesIO()
+    wb.save(b)
+    apply(admin, preview(admin, b.getvalue()).text)
+    assert "título 1616/-1" not in admin.get("/").text and "1 nota aguardando PDF" in admin.get("/").text
+    del with_orphans_again
+
+
+def test_removing_one_parcel_removes_the_whole_note(admin):
+    ids = with_orphans(admin)
+    ignore(admin, ids["500/1-2"], "Duplicado no ERP")
+    home = admin.get("/").text
+    assert "1 nota aguardando PDF" in home and "500/1-1" not in home and "500/1-2" not in home
+
+
+def test_restore_ignored(admin):
+    ids = with_orphans(admin)
+    ignore(admin, ids["1616/-1"])
+    with admin.app.state.engine.connect() as conn:
+        ig = conn.execute(text("select id from erp_ignorados")).scalar()
+    r = admin.post(f"/admin/ignorados/{ig}/restaurar", data={"csrf": admin.csrf}, follow_redirects=True)
+    assert "voltou para a lista de faltantes" in r.text
+    home = admin.get("/").text
+    assert "título 1616/-1" in home and "2 notas aguardando PDF" in home and "(3 títulos)" in home
+    assert "removido da lista" not in admin.get("/admin").text
+
+
+def test_only_admin_can_remove_or_restore(client, admin):
+    ids = with_orphans(admin)
+    assert client.post(f"/admin/faltando/{ids['1616/-1']}/ignorar", data={"csrf": "x"}, follow_redirects=False).status_code in (303, 403)
+    assert admin.post(f"/admin/faltando/{ids['1616/-1']}/ignorar", data={"csrf": "errado"}).status_code == 403
+    assert client.post("/admin/ignorados/1/restaurar", data={"csrf": "x"}, follow_redirects=False).status_code in (303, 403)
+    assert "título 1616/-1" in admin.get("/").text

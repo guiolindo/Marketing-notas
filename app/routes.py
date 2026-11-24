@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import AuditLog, ErpOrfao, Note
+from app.models import AuditLog, ErpIgnorado, ErpOrfao, Note
 from app.security import (
     NeedsAdmin,
     NeedsViewer,
@@ -48,7 +48,14 @@ from app.services.notes import (
     query_notes,
 )
 from app.services.sheets import build_system_export, build_xlsx
-from app.services.site import FALTANDO_MAX, MAX_TEXT, PRESETS, build_banner, get_faltando, set_faltando
+from app.services.site import (
+    FALTANDO_MAX,
+    MAX_TEXT,
+    PRESETS,
+    build_banner,
+    get_faltando,
+    set_faltando,
+)
 from app.web import render
 
 router = APIRouter()
@@ -121,14 +128,16 @@ def _faltando(db: Session, admin: bool) -> dict | None:
         return None
     from app.services.vincular import guess_kind, parse_titulo
     prefill = {o.id: {"kind": guess_kind(o), "numero": parse_titulo(o.titulo)[0]} for o in items} if admin else {}
-    return {"on": on, "msg": msg, "lista": items, "total": sum(o.valor_cents for o in items), "prefill": prefill}
+    notas = len({(re.sub(r"\D", "", o.cnpj), parse_titulo(o.titulo)[:2]) for o in items})  # parcelas da mesma nota = 1
+    return {"on": on, "msg": msg, "lista": items, "total": sum(o.valor_cents for o in items), "prefill": prefill, "notas": notas}
 
 
 def _conciliation_info(db: Session) -> dict:
     last = db.scalar(select(func.max(Note.conciliado_em)))
     return {"last": last, "conciliadas": db.scalar(select(func.count()).select_from(Note).where(Note.situacao != "sem_lancamento")),
             "total": db.scalar(select(func.count()).select_from(Note)),
-            "orfaos": db.scalars(select(ErpOrfao).order_by(ErpOrfao.data_emissao.desc().nulls_last())).all()}
+            "orfaos": db.scalars(select(ErpOrfao).order_by(ErpOrfao.data_emissao.desc().nulls_last())).all(),
+            "ignorados": db.scalars(select(ErpIgnorado).order_by(ErpIgnorado.at.desc())).all()}
 
 
 @router.get("/")
@@ -465,3 +474,30 @@ def admin_link_pdf(orfao_id: int, request: Request, arquivo: UploadFile = File(.
     audit(db, request, settings, "vinculou_pdf", f"{res.note.label} · {res.note.emit_nome[:40]} · {brl(res.note.valor_cents)}")
     _flash(request, "ok", f"PDF vinculado: {res.note.label} de {res.note.emit_nome} ({brl(res.note.valor_cents)}).")
     return RedirectResponse(f"/nota/{res.note.id}", status_code=303)
+
+
+@router.post("/admin/faltando/{orfao_id}/ignorar")
+def admin_ignore_orphan(orfao_id: int, request: Request, motivo: str = Form("", max_length=300), csrf: str = Form(""),
+                        db: Session = Depends(get_db), _=Depends(require_admin)):
+    from app.services.vincular import ignore_orphan, nome_erp
+    _post_guard(request, csrf)
+    removed = ignore_orphan(db, orfao_id, motivo)
+    if not removed:
+        _flash(request, "error", "Este título não está mais na lista de faltantes.")
+    else:
+        desc = f"{nome_erp(removed[0].fornecedor)} · título {', '.join(r.titulo for r in removed)}"
+        audit(db, request, request.app.state.settings, "ignorou_titulo", f"{desc} · {removed[0].motivo}")
+        _flash(request, "ok", f"Removido da lista de faltantes: {desc}. Não volta nas próximas conciliações.")
+    return RedirectResponse("/admin#faltando", status_code=303)
+
+
+@router.post("/admin/ignorados/{ignorado_id}/restaurar")
+def admin_restore_ignored(ignorado_id: int, request: Request, csrf: str = Form(""), db: Session = Depends(get_db),
+                          _=Depends(require_admin)):
+    from app.services.vincular import nome_erp, restore_ignored
+    _post_guard(request, csrf)
+    ig = restore_ignored(db, ignorado_id)
+    if ig:
+        audit(db, request, request.app.state.settings, "restaurou_titulo", f"{nome_erp(ig.fornecedor)} · título {ig.titulo}")
+        _flash(request, "ok", f"{nome_erp(ig.fornecedor)} · título {ig.titulo} voltou para a lista de faltantes.")
+    return RedirectResponse("/admin#conciliacao", status_code=303)

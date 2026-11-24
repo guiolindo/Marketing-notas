@@ -20,7 +20,7 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models import ErpOrfao, Note, Titulo, utcnow
+from app.models import ErpIgnorado, ErpOrfao, Note, Titulo, utcnow
 
 MAX_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 10_000
@@ -364,8 +364,9 @@ def apply_plan(db: Session, plan: Plan) -> int:
         recompute(note)
         applied += 1
     if plan.orphans is not None:
+        ignorados = {(re.sub(r"\D", "", i.cnpj), i.titulo) for i in db.scalars(select(ErpIgnorado)).all()}
         db.execute(delete(ErpOrfao))
-        db.add_all(ErpOrfao(**o) for o in plan.orphans)
+        db.add_all(ErpOrfao(**o) for o in plan.orphans if (re.sub(r"\D", "", o["cnpj"]), o["titulo"]) not in ignorados)
     db.commit()
     return applied
 

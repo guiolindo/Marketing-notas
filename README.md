@@ -49,6 +49,8 @@ Para PDF **escaneado** (sem texto, sem OCR), o admin usa **Vincular PDF** no pr�
 número (pré-preenchidos pelo título) e, se legível, digita a chave. A nota é criada com os dados do ERP (fornecedor, CNPJ,
 emissão, valor, lançamento, vencimento, pagamento; parcelas da mesma nota entram juntas), marcada como "PDF escaneado", e
 sai da lista. O PDF passa pelas mesmas travas de segurança e duplicidade do envio normal.
+Título que não é da loja (lançado errado no ERP) sai com **Remover da lista** (com motivo); o sistema lembra disso e ele
+não volta nas próximas conciliações. A lista dos removidos fica no cartão Conciliação, com **Restaurar**.
 
 **Exportações** (topo do site, respeitam os filtros): PDF único e **planilha Excel** (.xlsx com abas Notas e Parcelas,
 chave e número como texto, datas e valores formatados, linha de total; texto nunca vira fórmula).

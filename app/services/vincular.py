@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.crypto import Vault
-from app.models import ErpOrfao, Note, Titulo, utcnow
+from app.models import ErpIgnorado, ErpOrfao, Note, Titulo, utcnow
 from app.parsing import PdfRejected, nfe_key_is_valid, open_pdf
 from app.services.conciliacao import recompute
 
@@ -123,3 +123,32 @@ def link_pdf(db: Session, vault: Vault, orfao_id: int, data: bytes, filename: st
         db.rollback()
         return LinkResult(error="Esta nota já está no sistema.")
     return LinkResult(note=note)
+
+
+FIELDS = ("fornecedor", "titulo", "data_emissao", "vencimento", "data_pagamento", "data_lancamento", "valor_cents", "especie")
+
+
+def ignore_orphan(db: Session, orfao_id: int, motivo: str) -> list[ErpIgnorado]:
+    """Tira o título (e as parcelas da mesma nota) da lista de faltantes e lembra disso nas próximas importações."""
+    orfao = db.get(ErpOrfao, orfao_id)
+    if orfao is None:
+        return []
+    motivo = re.sub(r"\s+", " ", re.sub(r"[\x00-\x1f\x7f]", " ", motivo or "")).strip()[:200] or "Não é nota da loja"
+    out = []
+    for o in siblings(db, orfao):
+        ig = ErpIgnorado(cnpj=re.sub(r"\D", "", o.cnpj), motivo=motivo, **{f: getattr(o, f) for f in FIELDS})
+        db.add(ig)
+        db.delete(o)
+        out.append(ig)
+    db.commit()
+    return out
+
+
+def restore_ignored(db: Session, ignorado_id: int) -> ErpIgnorado | None:
+    ig = db.get(ErpIgnorado, ignorado_id)
+    if ig is None:
+        return None
+    db.add(ErpOrfao(cnpj=ig.cnpj, motivo="restaurado pelo admin", **{f: getattr(ig, f) for f in FIELDS}))
+    db.delete(ig)
+    db.commit()
+    return ig

@@ -179,3 +179,22 @@ class ErpOrfao(Base):
     motivo: Mapped[str] = mapped_column(String(200), default="")
     data_lancamento: Mapped[date | None] = mapped_column(Date, nullable=True)
     especie: Mapped[str] = mapped_column(String(20), default="")
+
+
+class ErpIgnorado(Base):
+    """Título do ERP que o admin tirou da lista de faltantes (ex.: não é nota da loja). Vale para as próximas importações."""
+
+    __tablename__ = "erp_ignorados"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cnpj: Mapped[str] = mapped_column(String(20), default="")  # só dígitos
+    titulo: Mapped[str] = mapped_column(String(40), default="")
+    fornecedor: Mapped[str] = mapped_column(String(300), default="")
+    data_emissao: Mapped[date | None] = mapped_column(Date, nullable=True)
+    vencimento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    data_pagamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    data_lancamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valor_cents: Mapped[int] = mapped_column(BigInteger, default=0)
+    especie: Mapped[str] = mapped_column(String(20), default="")
+    motivo: Mapped[str] = mapped_column(String(200), default="")
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
