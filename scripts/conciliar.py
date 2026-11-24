@@ -9,6 +9,7 @@ Casamento (por documento do ERP = mesmo CNPJ + número + série, somando as parc
   CNPJ igual é obrigatório; depois pontua  valor total (3) · data de emissão (3) · número (3, ou 2 se só "parecido":
   zeros cortados, só o fim, ano com 2 ou 4 dígitos). alta >= 8 (os quatro critérios), média >= 6. O resto vai para a aba "revisar" (conferência manual).
 Títulos que o Excel transformou em data (3082/1-1 -> 01/01/3082) são reconstruídos como ANO/MÊS-DIA.
+Data de quitação preenchida = título pago (mesmo com VLRPAGO 0: a quitação foi lançada à mão sem baixar o saldo).
 O arquivo gerado é revisado por quem roda o script antes de ir para o sistema.
 """
 from __future__ import annotations
@@ -96,6 +97,7 @@ class Doc:
     lancamento: date | None
     era_data: bool
     parcelas: list[dict] = field(default_factory=list)
+    quitacao_manual: bool = False
 
     @property
     def total(self) -> int:
@@ -121,8 +123,12 @@ def read_erp(path: str) -> list[Doc]:
         key = (cnpj, num, serie, em)
         doc = docs.setdefault(key, Doc(str(r[c["pessoa"]] or ""), cnpj, num, serie, em, d(r[c["lanc"]]), era))
         titulo_txt = f"{num}/{serie}-{parc}" if num else f"{serie} (virou data no Excel)"
+        nominal, pago, quit = cents(r[c["nominal"]]), cents(r[c["pago"]]), d(r[c["quit"]])
+        if quit and not pago:  # quitação preenchida à mão sem baixar o saldo: a data de quitação manda (está paga)
+            pago = nominal
+            doc.quitacao_manual = True
         doc.parcelas.append({"titulo": titulo_txt, "parcela": parc or len(doc.parcelas) + 1, "venc": d(r[c["venc"]]),
-                             "quit": d(r[c["quit"]]), "nominal": cents(r[c["nominal"]]), "pago": cents(r[c["pago"]]),
+                             "quit": quit, "nominal": nominal, "pago": pago,
                              "especie": str(r[c["especie"]] or ""), "original": r[c["titulo"]]})
     return list(docs.values())
 
@@ -181,7 +187,8 @@ def main() -> int:
         doc, n = docs[di], by_id[nid]
         conf = "alta" if pts >= 8 else "media"
         obs = "casado por " + " + ".join(why) + (f"; título era data no Excel ({doc.parcelas[0]['original']:%d/%m/%Y})"
-                                                  if doc.era_data else "")
+                                                  if doc.era_data else "") + (
+            "; paga pela data de quitação (VLRPAGO estava 0)" if doc.quitacao_manual else "")
         for p in sorted(doc.parcelas, key=lambda p: p["parcela"]):
             ws.append([nid, str(n["chave_acesso"]), doc.lancamento, p["titulo"], p["parcela"], p["venc"], p["quit"],
                        p["nominal"] / 100, p["pago"] / 100, p["especie"], conf, obs[:150]])

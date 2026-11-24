@@ -259,3 +259,23 @@ def test_script_number_rules():
     assert numero_score("53", "41", "41")[0] == 0
     num, serie, parc, era = parse_titulo(datetime(2001, 2, 8))                 # data "real": não inventa parcela 8
     assert (num, parc, era) == ("", 0, True) and serie == "08/02/2001"
+
+
+def test_script_quitacao_date_means_paid(tmp_path):
+    """Quitação preenchida à mão com VLRPAGO 0 = paga; sem quitação = em aberto."""
+    import sys
+    sys.path.insert(0, "scripts")
+    from conciliar import read_erp
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["PESSOA", "CNPJ/CPF", "NROEMPRESA", "TÍTULO", "CODESPÉCIE", "DTAVENCIMENTO", "DTAQUITAÇÃO", "VLRNOMINAL",
+               "VLRPAGO", "OPERAÇÃO", "DATAEMISSÃO", "DATALANÇAMENTO", "OBSERVAÇÃO", "VLROPERAÇÃO"])
+    ws.append(["A - 1", "11.222.333/0001-81", 29, "10/-1", "MDESMK", datetime(2026, 11, 11), datetime(2026, 11, 10), 2960, 0, "", datetime(2026, 9, 23), datetime(2026, 10, 28), "", 2960])
+    ws.append(["A - 1", "11.222.333/0001-81", 29, "11/-1", "MDESMK", datetime(2026, 11, 25), None, 2500, 0, "", datetime(2026, 10, 29), datetime(2026, 11, 10), "", 2500])
+    ws.append(["A - 1", "11.222.333/0001-81", 29, "12/-1", "MDESMK", datetime(2026, 6, 1), datetime(2026, 6, 1), 100, 100, "", datetime(2026, 5, 1), datetime(2026, 5, 2), "", 100])
+    path = tmp_path / "erp.xlsx"
+    wb.save(path)
+    docs = {doc.numero: doc for doc in read_erp(str(path))}
+    assert docs["10"].parcelas[0]["pago"] == 296000 and docs["10"].quitacao_manual
+    assert docs["11"].parcelas[0]["pago"] == 0 and not docs["11"].quitacao_manual
+    assert docs["12"].parcelas[0]["pago"] == 10000 and not docs["12"].quitacao_manual
