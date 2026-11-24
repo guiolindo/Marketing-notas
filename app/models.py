@@ -78,6 +78,7 @@ class Note(Base):
     proximo_vencimento: Mapped[date | None] = mapped_column(Date, nullable=True)  # da 1ª parcela ainda não paga
     conciliado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     conciliacao_obs: Mapped[str] = mapped_column(String(300), default="")
+    origem: Mapped[str] = mapped_column(String(10), default="pdf")  # pdf (lido do PDF) | manual (escaneado, dados do ERP)
 
     titulos: Mapped[list["Titulo"]] = relationship(back_populates="note", cascade="all, delete-orphan",
                                                     order_by="Titulo.vencimento", lazy="selectin")
@@ -85,6 +86,10 @@ class Note(Base):
     @property
     def aberto_cents(self) -> int:
         return max((self.nominal_cents or self.valor_cents) - (self.pago_cents or 0), 0) if self.situacao != "sem_lancamento" else 0
+
+    @property
+    def tem_chave(self) -> bool:
+        return self.chave.isdigit()
 
     @property
     def label(self) -> str:
@@ -172,3 +177,5 @@ class ErpOrfao(Base):
     data_pagamento: Mapped[date | None] = mapped_column(Date, nullable=True)
     valor_cents: Mapped[int] = mapped_column(BigInteger, default=0)
     motivo: Mapped[str] = mapped_column(String(200), default="")
+    data_lancamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    especie: Mapped[str] = mapped_column(String(20), default="")

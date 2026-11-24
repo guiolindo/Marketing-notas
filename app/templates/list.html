@@ -106,7 +106,7 @@
 {% endif %}
 
 {% if faltando and (faltando.on or base == '/admin') %}
-<details class="card faltando{{ ' off' if not faltando.on }}" {{ 'open' if base != '/admin' and faltando.lista|length <= 8 }}>
+<details class="card faltando{{ ' off' if not faltando.on }}" id="faltando" {{ 'open' if base == '/admin' or faltando.lista|length <= 8 }}>
   <summary>
     <span class="ft-ico" aria-hidden="true">{{ ico('files', 20) }}</span>
     <span class="ft-txt"><strong>{{ faltando.lista|length }} nota{{ 's' if faltando.lista|length != 1 }} aguardando PDF</strong>
@@ -116,7 +116,21 @@
   <ul class="ft-list">
     {% for o in faltando.lista %}
     <li><span class="ft-forn">{{ o.fornecedor|erpnome }}</span><span class="ft-v">{{ o.valor_cents|brl }}</span>
-      <span class="ft-sub">título {{ o.titulo or '—' }} · emissão {{ o.data_emissao|dmy }}{% if o.data_pagamento %} · paga {{ o.data_pagamento|dmy }}{% endif %}</span></li>
+      <span class="ft-sub">título {{ o.titulo or '—' }} · emissão {{ o.data_emissao|dmy }}{% if o.data_pagamento %} · paga {{ o.data_pagamento|dmy }}{% endif %}</span>
+      {% if base == '/admin' %}{% set pf = faltando.prefill[o.id] %}
+      <details class="vinc"><summary>{{ ico('upload', 15) }}Vincular PDF</summary>
+        <form method="post" action="/admin/faltando/{{ o.id }}/vincular" enctype="multipart/form-data" class="vinc-form">
+          <input type="hidden" name="csrf" value="{{ csrf() }}">
+          <div class="field vf-file"><label for="vf-{{ o.id }}">PDF (pode ser escaneado)</label><input id="vf-{{ o.id }}" type="file" name="arquivo" accept="application/pdf,.pdf" required></div>
+          <div class="field"><label for="vt-{{ o.id }}">Tipo</label><select id="vt-{{ o.id }}" name="tipo">
+            <option value="nfse" {{ 'selected' if pf.kind == 'nfse' }}>NFS-e</option><option value="danfe" {{ 'selected' if pf.kind == 'danfe' }}>DANFE</option></select></div>
+          <div class="field"><label for="vn-{{ o.id }}">Número da nota</label><input id="vn-{{ o.id }}" name="numero" type="text" inputmode="numeric" maxlength="20" value="{{ pf.numero }}" required></div>
+          <div class="field vf-wide"><label for="vc-{{ o.id }}">Chave de acesso <span class="muted">(opcional)</span></label><input id="vc-{{ o.id }}" name="chave" type="text" inputmode="numeric" maxlength="80" placeholder="44 ou 50 dígitos, se estiver legível"></div>
+          <div class="field vf-wide"><label for="vd-{{ o.id }}">Descrição <span class="muted">(opcional)</span></label><input id="vd-{{ o.id }}" name="descricao" type="text" maxlength="500" placeholder="Ex.: Locação de equipamento de som"></div>
+          <p class="muted small vf-wide">Fornecedor, CNPJ, emissão, valor, vencimento e pagamento vêm do ERP. Sem dados bancários na descrição.</p>
+          <button class="btn primary vf-wide" type="submit">{{ ico('check', 16) }}Vincular a este título</button>
+        </form>
+      </details>{% endif %}</li>
     {% endfor %}
   </ul>
 </details>

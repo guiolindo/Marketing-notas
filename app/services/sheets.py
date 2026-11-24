@@ -88,7 +88,8 @@ NOTE_HEADERS = ["Situação", "Tipo", "Número", "Série", "Fornecedor", "CNPJ/C
 def _note_row(n: Note) -> list:
     return [SITUACOES.get(n.situacao, ""), tipo(n), n.numero, n.serie, n.emit_nome, n.emit_doc, n.data_emissao,
             n.data_lancamento, n.proximo_vencimento, n.ultimo_pagamento, n.valor_cents / 100, (n.pago_cents or 0) / 100,
-            n.aberto_cents / 100, len(n.titulos), n.descricao, n.categoria, chave_formatada(n.chave)]
+            n.aberto_cents / 100, len(n.titulos), n.descricao, n.categoria,
+            chave_formatada(n.chave) if n.tem_chave else "não informada (PDF escaneado)"]
 
 
 def build_xlsx(notes: list[Note]) -> bytes:
@@ -114,7 +115,8 @@ def build_xlsx(notes: list[Note]) -> bytes:
     wp = wb.create_sheet("Parcelas")
     prow = [[tipo(n), n.numero, n.emit_nome, n.emit_doc, t.titulo, t.parcela, t.vencimento,
              t.data_pagamento if t.valor_pago_cents else None, t.valor_nominal_cents / 100, t.valor_pago_cents / 100,
-             "Paga" if t.pago else ("Pagamento previsto" if t.data_pagamento else "Em aberto"), chave_formatada(n.chave)]
+             "Paga" if t.pago else ("Pagamento previsto" if t.data_pagamento else "Em aberto"),
+             chave_formatada(n.chave) if n.tem_chave else ""]
             for n in notes for t in n.titulos]
     _write(wp, ["Tipo", "Número", "Fornecedor", "CNPJ/CPF", "Título", "Parcela", "Vencimento", "Pagamento", "Valor",
                 "Pago", "Situação", "Chave de acesso"], prow, {2: "@", 5: "@", 7: DATE, 8: DATE, 9: MONEY, 10: MONEY, 12: "@"},
@@ -159,7 +161,7 @@ def build_system_export(notes: list[Note]) -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = "notas_sistema"
-    rows = [[n.id, n.chave, tipo(n), n.numero, numero_curto(n.numero), n.serie, n.emit_nome, n.emit_doc,
+    rows = [[n.id, n.chave if n.tem_chave else "", tipo(n), n.numero, numero_curto(n.numero), n.serie, n.emit_nome, n.emit_doc,
              re.sub(r"\D", "", n.emit_doc), n.data_emissao, n.vencimento, n.valor_cents / 100, (n.desconto_cents or 0) / 100,
              n.descricao, n.categoria, n.data_lancamento, n.situacao, len(n.titulos), n.original_name] for n in notes]
     _write(ws, ["id_sistema", "chave_acesso", "tipo", "numero", "numero_curto", "serie", "emitente", "cnpj_emitente",
@@ -170,7 +172,7 @@ def build_system_export(notes: list[Note]) -> bytes:
             16: 14, 17: 15, 18: 9, 19: 30})
 
     wt = wb.create_sheet("titulos_atuais")
-    trows = [[n.id, n.chave, n.data_lancamento, t.titulo, t.parcela, t.vencimento, t.data_pagamento,
+    trows = [[n.id, n.chave if n.tem_chave else "", n.data_lancamento, t.titulo, t.parcela, t.vencimento, t.data_pagamento,
               t.valor_nominal_cents / 100, t.valor_pago_cents / 100, t.especie] for n in notes for t in n.titulos]
     _write(wt, list(COLUMNS[:10]), trows, {2: "@", 3: DATE, 4: "@", 6: DATE, 7: DATE, 8: MONEY, 9: MONEY},
            {1: 11, 2: 52, 3: 14, 4: 16, 5: 8, 6: 12, 7: 14, 8: 14, 9: 14, 10: 10})

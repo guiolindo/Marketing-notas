@@ -4,7 +4,7 @@
           <td>{{ kind_badge(n.kind) }}</td>
           <td class="nowrap mono">{{ n.numero }}</td>
           <td class="wrapcell"><a class="rowlink strong" href="/nota/{{ n.id }}">{{ n.emit_nome }}</a><div class="muted small">{{ n.emit_doc }}</div></td>
-          <td class="wrapcell desc"><div>{{ n.descricao }}</div>{% if n.categoria %}<span class="chip">{{ n.categoria }}</span>{% endif %}{% if n.obs %}<div class="muted small">{{ n.obs }}</div>{% endif %}</td>
+          <td class="wrapcell desc"><div>{{ n.descricao }}</div>{% if n.origem == 'manual' %}<span class="chip chip-scan" title="PDF sem texto: dados vindos do ERP">PDF escaneado</span>{% endif %}{% if n.categoria %}<span class="chip">{{ n.categoria }}</span>{% endif %}{% if n.obs %}<div class="muted small">{{ n.obs }}</div>{% endif %}</td>
           <td class="num strong">{{ n.valor_cents|brl }}{% if n.desconto_cents %}<div class="muted small normal">desc. {{ n.desconto_cents|brl }}</div>{% endif %}
             {% if n.situacao == 'paga' %}<div class="sit sit-paga" title="Quitada no ERP">{{ ico('check', 14) }}Paga{% if n.ultimo_pagamento %} · {{ n.ultimo_pagamento|dmy }}{% endif %}</div>
             {% elif n.situacao == 'parcial' %}<div class="sit sit-parcial">Pago {{ n.pago_cents|brl }}{% if n.proximo_vencimento %} · venc. {{ n.proximo_vencimento|dmy }}{% endif %}</div>

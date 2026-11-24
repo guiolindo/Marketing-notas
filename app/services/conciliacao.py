@@ -29,7 +29,8 @@ SITUACOES = {"paga": "Paga", "parcial": "Paga em parte", "a_pagar": "A pagar", "
 REQUIRED = ("id_sistema", "chave_acesso")
 COLUMNS = ("id_sistema", "chave_acesso", "data_lancamento", "titulo", "parcela", "vencimento", "data_pagamento",
            "valor_nominal", "valor_pago", "especie", "confianca", "observacao")
-ORPHAN_COLUMNS = ("fornecedor", "cnpj", "titulo", "data_emissao", "vencimento", "data_pagamento", "valor", "motivo")
+ORPHAN_COLUMNS = ("fornecedor", "cnpj", "titulo", "data_emissao", "vencimento", "data_pagamento", "valor", "motivo",
+                  "data_lancamento", "especie")
 
 
 class ImportError_(Exception):
@@ -336,7 +337,8 @@ def build_plan(db: Session, rows: list[dict], orphan_rows: list[dict] | None, fi
                     "fornecedor": _text(r.get("fornecedor"), 300), "cnpj": _text(r.get("cnpj"), 20),
                     "titulo": _text(r.get("titulo"), 40), "data_emissao": _date(r.get("data_emissao"), where),
                     "vencimento": _date(r.get("vencimento"), where), "data_pagamento": _date(r.get("data_pagamento"), where),
-                    "valor_cents": _money(r.get("valor"), where) or 0, "motivo": _text(r.get("motivo"), 200)})
+                    "valor_cents": _money(r.get("valor"), where) or 0, "motivo": _text(r.get("motivo"), 200),
+                    "data_lancamento": _date(r.get("data_lancamento"), where), "especie": _text(r.get("especie"), 20)})
             except ValueError as exc:
                 plan.errors.append(str(exc))
     plan.notes.sort(key=lambda n: (n.fornecedor.lower(), n.label))

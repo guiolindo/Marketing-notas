@@ -190,7 +190,8 @@ def main() -> int:
                                                   if doc.era_data else "") + (
             "; paga pela data de quitação (VLRPAGO estava 0)" if doc.quitacao_manual else "")
         for p in sorted(doc.parcelas, key=lambda p: p["parcela"]):
-            ws.append([nid, str(n["chave_acesso"]), doc.lancamento, p["titulo"], p["parcela"], p["venc"], p["quit"],
+            chave = str(n["chave_acesso"] or "")
+            ws.append([nid, chave if chave.isdigit() else "", doc.lancamento, p["titulo"], p["parcela"], p["venc"], p["quit"],
                        p["nominal"] / 100, p["pago"] / 100, p["especie"], conf, obs[:150]])
     for row in ws.iter_rows(min_row=2):
         row[1].number_format = row[3].number_format = "@"
@@ -198,7 +199,8 @@ def main() -> int:
             row[i].number_format = "DD/MM/YYYY"
 
     wo = wb.create_sheet("sem_pdf")
-    wo.append(["fornecedor", "cnpj", "titulo", "data_emissao", "vencimento", "data_pagamento", "valor", "motivo"])
+    wo.append(["fornecedor", "cnpj", "titulo", "data_emissao", "vencimento", "data_pagamento", "valor", "motivo",
+               "data_lancamento", "especie"])
     rv = wb.create_sheet("revisar")
     rv.append(["fornecedor", "titulo_erp", "emissao_erp", "valor_erp", "candidato_id", "candidato", "pontos", "motivo"])
     sist_cnpjs = {str(n["cnpj_digitos"]) for n in notes}
@@ -210,7 +212,7 @@ def main() -> int:
             "há nota do fornecedor, mas valor/data/número não conferem")
         for p in doc.parcelas:
             wo.append([doc.pessoa, doc.cnpj, p["titulo"], doc.emissao, p["venc"], p["quit"] if p["pago"] else None,
-                       p["nominal"] / 100, motivo])
+                       p["nominal"] / 100, motivo, doc.lancamento, p["especie"]])
         if best[1] is not None and best[0][0] >= 3:
             n = best[1]
             rv.append([doc.pessoa, doc.parcelas[0]["titulo"], doc.emissao, doc.total / 100, n["id_sistema"],

@@ -45,6 +45,10 @@ totais (Pago / A pagar / Sem lançamento) e nas exportações. O fluxo, em `/adm
 **Notas aguardando PDF**: os títulos do ERP sem PDF (aba `sem_pdf` da última conciliação) aparecem para todos num cartão
 com a mensagem do admin (padrão "Solicitamos por e-mail ao CDI."), editável e com opção de esconder em `/admin` →
 Conciliação. A lista diminui sozinha quando os PDFs forem lançados e conciliados.
+Para PDF **escaneado** (sem texto, sem OCR), o admin usa **Vincular PDF** no próprio item: escolhe o arquivo, confere tipo e
+número (pré-preenchidos pelo título) e, se legível, digita a chave. A nota é criada com os dados do ERP (fornecedor, CNPJ,
+emissão, valor, lançamento, vencimento, pagamento; parcelas da mesma nota entram juntas), marcada como "PDF escaneado", e
+sai da lista. O PDF passa pelas mesmas travas de segurança e duplicidade do envio normal.
 
 **Exportações** (topo do site, respeitam os filtros): PDF único e **planilha Excel** (.xlsx com abas Notas e Parcelas,
 chave e número como texto, datas e valores formatados, linha de total; texto nunca vira fórmula).

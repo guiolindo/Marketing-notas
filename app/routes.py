@@ -119,7 +119,9 @@ def _faltando(db: Session, admin: bool) -> dict | None:
     items = db.scalars(select(ErpOrfao).order_by(ErpOrfao.data_emissao.asc().nulls_last(), ErpOrfao.id)).all()
     if not items or (not on and not admin):
         return None
-    return {"on": on, "msg": msg, "lista": items, "total": sum(o.valor_cents for o in items)}
+    from app.services.vincular import guess_kind, parse_titulo
+    prefill = {o.id: {"kind": guess_kind(o), "numero": parse_titulo(o.titulo)[0]} for o in items} if admin else {}
+    return {"on": on, "msg": msg, "lista": items, "total": sum(o.valor_cents for o in items), "prefill": prefill}
 
 
 def _conciliation_info(db: Session) -> dict:
@@ -444,3 +446,22 @@ def admin_faltando(request: Request, msg: str = Form("", max_length=1000), mostr
         audit(db, request, request.app.state.settings, "aviso_faltando", ("ligado: " if mostrar == "1" else "desligado: ") + msg[:60])
         _flash(request, "ok", "Aviso das notas aguardando PDF atualizado.")
     return RedirectResponse("/admin#conciliacao", status_code=303)
+
+
+@router.post("/admin/faltando/{orfao_id}/vincular")
+def admin_link_pdf(orfao_id: int, request: Request, arquivo: UploadFile = File(...), tipo: str = Form("nfse", max_length=10),
+                   numero: str = Form("", max_length=40), chave: str = Form("", max_length=80),
+                   descricao: str = Form("", max_length=500), csrf: str = Form(""), db: Session = Depends(get_db),
+                   _=Depends(require_admin)):
+    from app.services.vincular import link_pdf
+    settings = request.app.state.settings
+    _post_guard(request, csrf)
+    data = arquivo.file.read(settings.max_upload_bytes + 1)
+    res = link_pdf(db, request.app.state.vault, orfao_id, data, arquivo.filename or "", settings.max_upload_bytes,
+                   kind=tipo, numero=numero, chave=chave, descricao=descricao)
+    if res.error:
+        _flash(request, "error", res.error)
+        return RedirectResponse("/admin#faltando", status_code=303)
+    audit(db, request, settings, "vinculou_pdf", f"{res.note.label} · {res.note.emit_nome[:40]} · {brl(res.note.valor_cents)}")
+    _flash(request, "ok", f"PDF vinculado: {res.note.label} de {res.note.emit_nome} ({brl(res.note.valor_cents)}).")
+    return RedirectResponse(f"/nota/{res.note.id}", status_code=303)

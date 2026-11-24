@@ -23,7 +23,7 @@
       <dt>Descrição</dt><dd>{{ note.descricao }}</dd>
       {% if note.desconto_cents %}<dt>Desconto</dt><dd>{{ note.desconto_cents|brl }}</dd>{% endif %}
       <dt>Valor</dt><dd><strong>{{ note.valor_cents|brl }}</strong></dd>
-      <dt>Chave</dt><dd class="mono small break">{{ note.chave }}</dd>
+      <dt>Chave</dt><dd class="mono small break">{{ note.chave|chave if note.tem_chave else "não informada (PDF escaneado)" }}</dd>
       <dt>Arquivo</dt><dd class="small">{{ note.original_name }} · {{ (note.file_size / 1024)|round(0)|int }} KB</dd>
     </dl>
     <div class="actions"><a class="btn" href="/nota/{{ note.id }}.pdf" target="_blank" rel="noopener">Abrir PDF</a></div>

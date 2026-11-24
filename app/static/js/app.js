@@ -101,8 +101,8 @@
     });
   });
 
-  // Notas aguardando PDF: no celular começa fechado (só o resumo)
-  if (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) {
+  // Notas aguardando PDF: no celular começa fechado para o visitante (no admin fica aberto para vincular)
+  if (window.matchMedia && window.matchMedia("(max-width: 768px)").matches && location.pathname.indexOf("/admin") !== 0) {
     document.querySelectorAll("details.faltando[open]").forEach(function (d) { d.open = false; });
   }
 

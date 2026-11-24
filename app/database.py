@@ -38,6 +38,9 @@ _NEW_COLUMNS = [
     ("notes", "proximo_vencimento", "DATE"),
     ("notes", "conciliado_em", "TIMESTAMP WITH TIME ZONE"),
     ("notes", "conciliacao_obs", "VARCHAR(300) DEFAULT ''"),
+    ("notes", "origem", "VARCHAR(10) DEFAULT 'pdf'"),
+    ("erp_orfaos", "data_lancamento", "DATE"),
+    ("erp_orfaos", "especie", "VARCHAR(20) DEFAULT ''"),
 ]
 
 

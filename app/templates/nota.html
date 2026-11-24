@@ -65,8 +65,10 @@
     <dt>Valor</dt><dd>{{ note.valor_cents|brl }}{% if note.desconto_cents %} <span class="muted small">(desconto {{ note.desconto_cents|brl }})</span>{% endif %}</dd>
     {% if note.vencimento %}<dt>Vencimento no PDF</dt><dd>{{ note.vencimento|dmy }}</dd>{% endif %}
     <dt>Tomador</dt><dd>{{ note.tom_nome|doc }}{% if note.tom_doc %}<br><span class="muted small">{{ note.tom_doc }}</span>{% endif %}</dd>
-    <dt>Chave de acesso</dt><dd class="chave-row"><span class="mono chave" id="chave">{{ note.chave|chave }}</span>
+    {% if note.tem_chave %}<dt>Chave de acesso</dt><dd class="chave-row"><span class="mono chave" id="chave">{{ note.chave|chave }}</span>
       <button class="btn sm" type="button" data-copy="{{ note.chave }}">Copiar</button></dd>
+    {% else %}<dt>Chave de acesso</dt><dd class="muted">não informada</dd>{% endif %}
+    {% if note.origem == 'manual' %}<dt>Origem</dt><dd><span class="chip chip-scan">PDF escaneado</span> <span class="muted small">dados vindos do contas a pagar do ERP</span></dd>{% endif %}
     {% if note.conciliacao_obs and is_admin %}<dt>Conciliação</dt><dd class="small muted">{{ note.conciliacao_obs }}</dd>{% endif %}
   </dl>
 </section>
